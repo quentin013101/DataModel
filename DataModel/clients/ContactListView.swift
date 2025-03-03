@@ -15,33 +15,43 @@ struct ContactListView: View {
     @State private var selectedContact: Contact? = nil
     @State private var sheetID = UUID()
     @State private var sortBy: SortOption = .lastName
+    @State private var selectedContacts = Set<NSManagedObjectID>() // ✅ Stocke les ObjectID
 
     enum SortOption {
         case clientType, lastName, address, postalCode, city, phone, email
     }
 
-    var sortedContacts: [Contact] {
+    /// ✅ Applique le tri et la recherche
+    var filteredContacts: [Contact] {
+        let filtered = contacts.filter { contact in
+            searchText.isEmpty ||
+            (contact.firstName?.localizedCaseInsensitiveContains(searchText) ?? false) ||
+            (contact.lastName?.localizedCaseInsensitiveContains(searchText) ?? false) ||
+            (contact.email?.localizedCaseInsensitiveContains(searchText) ?? false) ||
+            (contact.city?.localizedCaseInsensitiveContains(searchText) ?? false)
+        }
+        
         switch sortBy {
         case .clientType:
-            return contacts.sorted { ($0.clientType ?? "") < ($1.clientType ?? "") }
+            return filtered.sorted { ($0.clientType ?? "") < ($1.clientType ?? "") }
         case .lastName:
-            return contacts.sorted { ($0.lastName ?? "") < ($1.lastName ?? "") }
+            return filtered.sorted { ($0.lastName ?? "") < ($1.lastName ?? "") }
         case .address:
-            return contacts.sorted { ($0.street ?? "") < ($1.street ?? "") }
+            return filtered.sorted { ($0.street ?? "") < ($1.street ?? "") }
         case .postalCode:
-            return contacts.sorted { ($0.postalCode ?? "") < ($1.postalCode ?? "") }
+            return filtered.sorted { ($0.postalCode ?? "") < ($1.postalCode ?? "") }
         case .city:
-            return contacts.sorted { ($0.city ?? "") < ($1.city ?? "") }
+            return filtered.sorted { ($0.city ?? "") < ($1.city ?? "") }
         case .phone:
-            return contacts.sorted { ($0.phoneNumber ?? "") < ($1.phoneNumber ?? "") }
+            return filtered.sorted { ($0.phoneNumber ?? "") < ($1.phoneNumber ?? "") }
         case .email:
-            return contacts.sorted { ($0.email ?? "") < ($1.email ?? "") }
+            return filtered.sorted { ($0.email ?? "") < ($1.email ?? "") }
         }
     }
 
     var body: some View {
         VStack {
-            // ✅ Barre de recherche + Bouton d'ajout
+            // ✅ Barre de recherche + Boutons d'ajout et suppression multiple
             HStack {
                 TextField("Rechercher un client", text: $searchText)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
@@ -50,36 +60,39 @@ struct ContactListView: View {
 
                 Spacer()
 
+                if !selectedContacts.isEmpty {
+                    Button(action: deselectAllContacts) { // ✅ Désélectionner tous les contacts
+                        Text("Tout désélectionner")
+                            .bold()
+                            .foregroundColor(.blue)
+                    }
+
+                    Button(action: deleteSelectedContacts) { // ✅ Supprimer les contacts sélectionnés
+                        Text("SUPPRIMER (\(selectedContacts.count))")
+                            .bold()
+                            .foregroundColor(.red)
+                    }
+                }
+
                 Button(action: { showingAddClient = true }) {
                     Text("NOUVEAU CLIENT")
                         .bold()
-                        .padding()
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(5)
+                        .foregroundColor(.blue)
                 }
-                .buttonStyle(PlainButtonStyle()) // 🔥 Supprime tout fond parasite sur macOS
             }
             .padding(.horizontal)
 
             Divider()
 
-            // ✅ En-tête des colonnes
+            // ✅ En-tête des colonnes triables
             HStack {
-                SortableColumn(title: "Type", currentSort: $sortBy, sortOption: .clientType)
-                    .frame(width: 80)
-                SortableColumn(title: "Nom", currentSort: $sortBy, sortOption: .lastName)
-                    .frame(width: 150)
-                SortableColumn(title: "Adresse", currentSort: $sortBy, sortOption: .address)
-                    .frame(width: 200)
-                SortableColumn(title: "Code Postal", currentSort: $sortBy, sortOption: .postalCode)
-                    .frame(width: 100)
-                SortableColumn(title: "Ville", currentSort: $sortBy, sortOption: .city)
-                    .frame(width: 150)
-                SortableColumn(title: "Téléphone", currentSort: $sortBy, sortOption: .phone)
-                    .frame(width: 120)
-                SortableColumn(title: "Email", currentSort: $sortBy, sortOption: .email)
-                    .frame(width: 200)
+                SortableColumn(title: "Type", currentSort: $sortBy, sortOption: .clientType).frame(width: 80)
+                SortableColumn(title: "Nom", currentSort: $sortBy, sortOption: .lastName).frame(width: 150)
+                SortableColumn(title: "Adresse", currentSort: $sortBy, sortOption: .address).frame(width: 200)
+                SortableColumn(title: "Code Postal", currentSort: $sortBy, sortOption: .postalCode).frame(width: 100)
+                SortableColumn(title: "Ville", currentSort: $sortBy, sortOption: .city).frame(width: 150)
+                SortableColumn(title: "Téléphone", currentSort: $sortBy, sortOption: .phone).frame(width: 120)
+                SortableColumn(title: "Email", currentSort: $sortBy, sortOption: .email).frame(width: 200)
             }
             .padding(.vertical, 5)
             .background(Color.gray.opacity(0.2))
@@ -87,90 +100,112 @@ struct ContactListView: View {
 
             Divider()
 
-            // ✅ Liste des clients sous forme de tableau
-            if sortedContacts.isEmpty {
+            // ✅ Liste des clients sous forme de tableau avec sélection multiple
+            if filteredContacts.isEmpty {
                 Text("Aucun client trouvé")
                     .foregroundColor(.gray)
                     .padding()
             } else {
                 ScrollView {
                     LazyVStack {
-                        ForEach(sortedContacts) { contact in
-                            Button(action: {
-                                openContactDetail(contact)
-                            }) {
-                                HStack {
-                                    // ✅ Type (Icône)
-                                    Image(systemName: contact.clientType == "Entreprise" ? "building.2.fill" : "person.fill")
-                                        .foregroundColor(contact.clientType == "Entreprise" ? .blue : .blue)
-                                        .frame(width: 80)
-
-                                    // ✅ Nom
-                                    Text("\(contact.firstName ?? "") \(contact.lastName ?? "")")
-                                        .frame(width: 150, alignment: .leading)
-
-                                    // ✅ Adresse
-                                    Text(contact.street ?? "-")
-                                        .frame(width: 200, alignment: .leading)
-
-                                    // ✅ Code Postal : Affichage uniquement si valide
-                                    Text((contact.postalCode?.count == 5 && contact.postalCode?.allSatisfy { $0.isNumber } == true) ? contact.postalCode! : "-")
-                                        .frame(width: 100, alignment: .leading)
-
-                                    // ✅ Ville
-                                    Text(contact.city ?? "-")
-                                        .frame(width: 150, alignment: .leading)
-
-                                    // ✅ Téléphone : Affichage propre
-                                    Text(contact.phoneNumber?.replacingOccurrences(of: " ", with: "") ?? "-")
-                                        .frame(width: 120, alignment: .leading)
-
-
-                                    // ✅ Email : Format minimal
-                                    Text(contact.email?.contains("@") == true ? contact.email! : "-")
-                                        .frame(width: 200, alignment: .leading)
+                        ForEach(filteredContacts, id: \.self) { contact in
+                            HStack {
+                                // ✅ Case à cocher (N'affecte pas le clic pour ouvrir la fiche)
+                                Button(action: {
+                                    toggleSelection(contact)
+                                }) {
+                                    Image(systemName: selectedContacts.contains(contact.objectID) ? "checkmark.circle.fill" : "circle")
+                                        .foregroundColor(selectedContacts.contains(contact.objectID) ? .blue : .gray)
+                                        .frame(width: 30)
                                 }
-                                .padding()
-                                //.background(Color.white)
-                                .cornerRadius(8)
-                                .shadow(radius: 1)
+                                .buttonStyle(PlainButtonStyle())
+
+                                // ✅ Type (Icône)
+                                Button(action: {
+                                    openContactDetail(contact)
+                                }) {
+                                    HStack {
+                                        Image(systemName: contact.clientType == "Entreprise" ? "building.2.fill" : "person.fill")
+                                            .foregroundColor(contact.clientType == "Entreprise" ? .blue : .gray)
+                                            .frame(width: 80)
+
+                                        // ✅ Infos client -> Clique ouvre la fiche détaillée
+                                        Text("\(contact.firstName ?? "") \(contact.lastName ?? "")").frame(width: 150, alignment: .leading)
+                                        Text(contact.street ?? "-").frame(width: 200, alignment: .leading)
+                                        Text(contact.postalCode ?? "-").frame(width: 100, alignment: .leading)
+                                        Text(contact.city ?? "-").frame(width: 150, alignment: .leading)
+                                        Text(contact.phoneNumber ?? "-").frame(width: 120, alignment: .leading)
+                                        Text(contact.email ?? "-").frame(width: 200, alignment: .leading)
+                                    }
+                                    .padding()
+                                    .background(Color.gray.opacity(0.2)) // 🔥 Fond gris étendu à Type + Infos client
+                                    .cornerRadius(8)
+                                    .shadow(radius: 1)
+                                }
+                                .buttonStyle(PlainButtonStyle())
                             }
                         }
-                        .onDelete(perform: deleteContacts)
                     }
                     .padding()
                 }
             }
         }
         .padding()
-        .onAppear {
-            selectedTab = "clients"
-        }
+        .onAppear { selectedTab = "clients" }
         .sheet(item: $selectedContact) { contact in
             ContactDetailView(contact: contact)
-                .id(sheetID) // 🔥 Force la réouverture
+                .id(sheetID)
         }
         .sheet(isPresented: $showingAddClient) {
-            AddContactView(isPresented: $showingAddClient)  // ✅ On passe bien la variable Binding
+            AddContactView()
                 .environment(\.managedObjectContext, viewContext)
         }
     }
 
-    private func openContactDetail(_ contact: Contact) {
-        selectedContact = nil
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            selectedContact = contact
-            sheetID = UUID()
+    // ✅ Fonction pour sélectionner/désélectionner un contact
+    private func toggleSelection(_ contact: Contact) {
+        let contactID = contact.objectID
+        if selectedContacts.contains(contactID) {
+            selectedContacts.remove(contactID)
+        } else {
+            selectedContacts.insert(contactID)
         }
     }
 
-    private func deleteContacts(at offsets: IndexSet) {
-        for index in offsets {
-            let contact = contacts[index]
-            viewContext.delete(contact)
+    // ✅ Supprime tous les contacts sélectionnés avec confirmation
+    private func deleteSelectedContacts() {
+        guard !selectedContacts.isEmpty else { return }
+
+        let alert = NSAlert()
+        alert.messageText = "Confirmer la suppression"
+        alert.informativeText = "Êtes-vous sûr de vouloir supprimer \(selectedContacts.count) contact(s) ? Cette action est irréversible."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Supprimer")
+        alert.addButton(withTitle: "Annuler")
+
+        if alert.runModal() == .alertFirstButtonReturn {
+            for contactID in selectedContacts {
+                if let contact = viewContext.object(with: contactID) as? Contact {
+                    viewContext.delete(contact)
+                }
+            }
+            try? viewContext.save()
+            selectedContacts.removeAll()
         }
-        try? viewContext.save()
+    }
+
+    private func deselectAllContacts() {
+        selectedContacts.removeAll()
+    }
+    
+    // ✅ Ouvre la fiche détaillée du contact
+    private func openContactDetail(_ contact: Contact) {
+        selectedContact = nil // Réinitialisation pour forcer la mise à jour de la vue
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            selectedContact = contact
+            sheetID = UUID() // 🔥 Force le rafraîchissement de la sheet
+        }
     }
 }
 

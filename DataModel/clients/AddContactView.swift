@@ -4,82 +4,111 @@ import CoreData
 struct AddContactView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.dismiss) private var dismiss
-    @Binding var isPresented: Bool  // ✅ Ajout pour contrôler la sheet
-    @State private var firstName = ""
-    @State private var lastName = ""
-    @State private var street = ""
-    @State private var postalCode = ""
-    @State private var city = ""
-    @State private var phoneNumber = ""
-    @State private var email = ""
-    @State private var clientType = "Particulier"
+
+    @State private var civility: String = "M."
+    @State private var firstName: String = ""
+    @State private var lastName: String = ""
+    @State private var street: String = ""
+    @State private var postalCode: String = ""
+    @State private var city: String = ""
+    @State private var phoneNumber: String = ""
+    @State private var email: String = ""
+    @State private var clientType: String = "Particulier"
+    @State private var fiscalNumber: String = ""
 
     @State private var postalCodeError: String? = nil
     @State private var phoneError: String? = nil
     @State private var emailError: String? = nil
 
     let clientTypes = ["Particulier", "Entreprise"]
+    let civilities = ["M.", "Mme", "Mlle", "Dr", "Pr"]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            Text("Nouveau Client")
-                .font(.largeTitle)
-                .bold()
-                .padding(.bottom, 10)
+            // ✅ Centrer le titre principal
+            HStack {
+                Spacer()
+                Text("Nouveau Client")
+                    .font(.largeTitle)
+                    .bold()
+                    .padding(.bottom, 10)
+                Spacer()
+            }
 
             Form {
-                Section(header: Text("Type de Client")) {
-                    Picker("Type", selection: $clientType) {
-                        ForEach(clientTypes, id: \.self) { type in
-                            Text(type)
+                // ✅ Type de Client
+                Section {
+                    HStack {
+                        Text("Type")
+                            .frame(width: 120, alignment: .leading)
+                        Picker("", selection: $clientType) {
+                            ForEach(clientTypes, id: \.self) { type in
+                                Text(type)
+                            }
                         }
+                        .pickerStyle(SegmentedPickerStyle())
+                        .frame(maxWidth: .infinity)
                     }
-                    .pickerStyle(SegmentedPickerStyle())
                 }
 
-                Section(header: Text("Informations Personnelles")) {
-                    InputField(label: "Prénom", text: $firstName)
-                    InputField(label: "Nom *", text: $lastName)
+                // ✅ Centrer l'en-tête "Informations Personnelles"
+                Section(header: sectionHeader("Informations Personnelles")) {
+                    formRowPicker(label: "Civilité", selection: $civility, options: civilities)
+                    formRow(label: "Prénom", text: $firstName)
+                    formRow(label: "Nom *", text: $lastName)
+
+                    // ✅ Afficher Numéro Fiscal uniquement si clientType == "Entreprise"
+                    if clientType == "Entreprise" {
+                        formRow(label: "Numéro Fiscal", text: $fiscalNumber)
+                    }
                 }
 
-                Section(header: Text("Coordonnées")) {
-                    InputField(label: "Adresse", text: $street)
-
-                    InputFieldWithError(label: "Code Postal", text: $postalCode, error: $postalCodeError)
+                // ✅ Centrer l'en-tête "Coordonnées"
+                Section(header: sectionHeader("Coordonnées")) {
+                    formRow(label: "Adresse", text: $street)
+                    formRowWithError(label: "Code Postal", text: $postalCode, error: $postalCodeError)
                         .onChange(of: postalCode) { _ in validatePostalCode() }
-
-                    InputField(label: "Ville", text: $city)
-
-                    InputFieldWithError(label: "Téléphone", text: $phoneNumber, error: $phoneError)
+                    formRow(label: "Ville", text: $city)
+                    formRowWithError(label: "Téléphone", text: $phoneNumber, error: $phoneError)
                         .onChange(of: phoneNumber) { _ in validatePhoneNumber() }
-
-                    InputFieldWithError(label: "Email", text: $email, error: $emailError)
+                    formRowWithError(label: "Email", text: $email, error: $emailError)
                         .onChange(of: email) { _ in validateEmail() }
                 }
             }
+            .padding(.horizontal, -10)
 
-            // 🔹 Boutons
+            // ✅ Boutons alignés
             HStack {
                 Button("Annuler") {
                     dismiss()
                 }
+                .bold()
                 .foregroundColor(.red)
 
                 Spacer()
 
-                Button("Enregistrer") {
-                    saveContact()
+                Button(action: saveContact) {
+                    Text("Enregistrer")
+                        .bold()
+                        .foregroundColor(isFormValid() ? Color.green : Color.gray)
                 }
-                .disabled(!isFormValid()) // 🔥 Désactive si invalide
-                .foregroundColor(.white)
-                .padding()
-                .background(isFormValid() ? Color.blue : Color.gray)
-                .cornerRadius(5)
+                .disabled(!isFormValid())
             }
-            .padding(.horizontal)
-            .padding(.top, 10)
+            .padding()
         }
         .padding()
+    }
+
+    // ✅ Fonction pour centrer les en-têtes des sections
+    private func sectionHeader(_ title: String) -> some View {
+        HStack {
+            Spacer()
+            Text(title)
+                .font(.headline)
+                .bold()
+                .foregroundColor(.gray)
+            Spacer()
+        }
     }
 
     // ✅ Vérifie que le formulaire est valide
@@ -101,7 +130,7 @@ struct AddContactView: View {
 
     private func validatePhoneNumber() -> Bool {
         if phoneNumber.isEmpty { phoneError = nil; return true }
-        let regex = "^(?:\\+33|0)[1-9](?:[\\s.-]?[0-9]{2}){4}$"
+        let regex = "^0[67][0-9]{8}$"
         let test = NSPredicate(format: "SELF MATCHES %@", regex)
         let isValid = test.evaluate(with: phoneNumber)
         phoneError = isValid ? nil : "Numéro invalide"
@@ -119,6 +148,7 @@ struct AddContactView: View {
 
     private func saveContact() {
         let newContact = Contact(context: viewContext)
+        newContact.civility = civility
         newContact.firstName = firstName
         newContact.lastName = lastName
         newContact.street = street
@@ -128,55 +158,63 @@ struct AddContactView: View {
         newContact.email = email
         newContact.clientType = clientType
 
+        if clientType == "Entreprise" {
+            newContact.fiscalNumber = fiscalNumber
+        }
+
         do {
             try viewContext.save()
             
-            // ✅ Fermer la sheet correctement
+            // ✅ Fermer la sheet après l'ajout du contact
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                isPresented = false
+                dismiss()
             }
         } catch {
             print("Erreur lors de la sauvegarde : \(error)")
         }
     }
-}
 
-// ✅ Composant pour un champ de saisie simple
-struct InputField: View {
-    let label: String
-    @Binding var text: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
+    // ✅ Composant pour un champ classique
+    private func formRow(label: String, text: Binding<String>) -> some View {
+        HStack {
             Text(label)
-                .fontWeight(.bold)
-            TextField(label, text: $text)
-                .textFieldStyle(RoundedBorderTextFieldStyle()) // ✅ Forcer le style
+                .frame(width: 120, alignment: .leading)
+            TextField("", text: text)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
                 .frame(maxWidth: .infinity)
         }
     }
-}
 
-// ✅ Composant pour un champ avec erreur
-struct InputFieldWithError: View {
-    let label: String
-    @Binding var text: String
-    @Binding var error: String?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            HStack {
-                Text(label)
-                    .fontWeight(.bold)
-                if let error = error {
-                    Text(error)
+    // ✅ Composant pour un champ avec message d'erreur
+    private func formRowWithError(label: String, text: Binding<String>, error: Binding<String?>) -> some View {
+        HStack {
+            Text(label)
+                .frame(width: 120, alignment: .leading)
+            VStack(alignment: .leading) {
+                TextField("", text: text)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .frame(maxWidth: .infinity)
+                if let errorMessage = error.wrappedValue {
+                    Text(errorMessage)
                         .foregroundColor(.red)
                         .font(.caption)
                 }
             }
-            TextField(label, text: $text)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-                .frame(maxWidth: .infinity)
+        }
+    }
+
+    // ✅ Composant pour un champ Picker
+    private func formRowPicker(label: String, selection: Binding<String>, options: [String]) -> some View {
+        HStack {
+            Text(label)
+                .frame(width: 120, alignment: .leading)
+            Picker("", selection: selection) {
+                ForEach(options, id: \.self) { option in
+                    Text(option)
+                }
+            }
+            .pickerStyle(MenuPickerStyle())
+            .frame(maxWidth: .infinity)
         }
     }
 }

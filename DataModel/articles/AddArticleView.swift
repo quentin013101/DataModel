@@ -3,57 +3,47 @@ import SwiftUI
 struct AddArticleView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.dismiss) var dismiss
-    
+
     @State private var name = ""
-    @State private var type = "Matériau"
-    @State private var unit = "u"
+    @State private var type = ""
+    @State private var unit = ""
     @State private var cost = ""
     @State private var price = ""
     @State private var marginPercentage = ""
-    @State private var marginAmount = ""
 
     var body: some View {
-        VStack {
-            HStack {
-                Spacer()
-                Button(action: { dismiss() }) {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(.gray)
-                        .font(.title)
-                }
-                .padding()
-            }
-
-            Text("Créer un article")
+        VStack(spacing: 20) {
+            Text("Ajouter un Article")
                 .font(.title)
                 .bold()
-                .padding(.bottom, 10)
 
             Form {
-                TextField("Nom", text: $name)
-                
-                Picker("Type", selection: $type) {
-                    Text("Matériau").tag("Matériau")
-                    Text("Main d'œuvre").tag("Main d'œuvre")
-                    Text("Ouvrage").tag("Ouvrage")
+                Section(header: Text("Détails de l'article").bold()) {
+                    TextField("Nom", text: $name)
+                    TextField("Type", text: $type)
+                    TextField("Unité", text: $unit)
+                    TextField("Déboursé sec (€ HT)", text: $cost)
+                    TextField("Prix facturé (€ HT)", text: $price)
+                    TextField("Marge (%)", text: $marginPercentage)
                 }
-                .pickerStyle(SegmentedPickerStyle())
-
-                TextField("Unité", text: $unit)
-                TextField("Déboursé sec", text: $cost)
-                TextField("Prix facturé", text: $price)
-                TextField("Marge (%)", text: $marginPercentage)
-                TextField("Marge (€)", text: $marginAmount)
             }
 
-            Spacer()
+            HStack {
+                Button("Annuler") {
+                    dismiss()
+                }
+                .foregroundColor(.blue)
 
-            Button("💾 Enregistrer") {
-                saveArticle()
+                Spacer()
+
+                Button("Enregistrer") {
+                    saveArticle()
+                }
+                .foregroundColor(.green)
             }
-            .buttonStyle(.borderedProminent)
             .padding()
         }
+        .padding()
     }
 
     private func saveArticle() {
@@ -61,16 +51,15 @@ struct AddArticleView: View {
         newArticle.name = name
         newArticle.type = type
         newArticle.unit = unit
-        newArticle.cost = cost
-        newArticle.price = price
-        newArticle.marginPercentage = marginPercentage
-        newArticle.marginAmount = marginAmount
+        newArticle.cost = Double(cost) ?? 0.0
+        newArticle.price = Double(price) ?? 0.0
+        newArticle.marginPercentage = Double(marginPercentage) ?? 0.0
 
         do {
             try viewContext.save()
             dismiss()
         } catch {
-            print("❌ Erreur lors de l'enregistrement : \(error.localizedDescription)")
+            print("Erreur lors de l'enregistrement : \(error)")
         }
     }
 }

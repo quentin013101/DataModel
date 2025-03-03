@@ -1,12 +1,19 @@
 import SwiftUI
 
 struct SidebarView: View {
-    @Binding var selectedTab: String // 🔹 Gère la sélection active
+    @Environment(\.managedObjectContext) private var viewContext
+        @Binding var selectedTab: String // 🔹 Gère la sélection active
+        @State private var showingNewQuote = false // ✅ Ajout de l'état pour afficher la vue de devis
+
 
     var body: some View {
         List {
             Section(header: Text("ACTIONS")) {
-                SidebarItem(title: "Créez un devis")
+                Button(action: { showingNewQuote = true }) {
+                                    SidebarItem(title: "Créez un devis")
+                                }
+                                .buttonStyle(PlainButtonStyle()) // ✅ Supprime l'effet par défaut
+                                
                 SidebarItem(title: "Créez une facture")
             }
 

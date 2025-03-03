@@ -1,16 +1,10 @@
-//
-//  EditArticleView.swift
-//  DataModel
-//
-//  Created by Quentin FABERES on 28/02/2025.
-//
-
-
 import SwiftUI
 
 struct EditArticleView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.dismiss) var dismiss
+    
+    var article: Article
 
     @State private var name: String
     @State private var type: String
@@ -18,79 +12,65 @@ struct EditArticleView: View {
     @State private var cost: String
     @State private var price: String
     @State private var marginPercentage: String
-    @State private var marginAmount: String
-
-    var article: Article
 
     init(article: Article) {
         self.article = article
         _name = State(initialValue: article.name ?? "")
-        _type = State(initialValue: article.type ?? "Matériau")
-        _unit = State(initialValue: article.unit ?? "u")
-        _cost = State(initialValue: article.cost ?? "")
-        _price = State(initialValue: article.price ?? "")
-        _marginPercentage = State(initialValue: article.marginPercentage ?? "")
-        _marginAmount = State(initialValue: article.marginAmount ?? "")
+        _type = State(initialValue: article.type ?? "")
+        _unit = State(initialValue: article.unit ?? "")
+        _cost = State(initialValue: "\(article.cost)")
+        _price = State(initialValue: "\(article.price)")
+        _marginPercentage = State(initialValue: "\(article.marginPercentage)")
     }
 
     var body: some View {
-        VStack {
-            HStack {
-                Spacer()
-                Button(action: { dismiss() }) {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(.gray)
-                        .font(.title)
-                }
-                .padding()
-            }
-
+        VStack(spacing: 20) {
             Text("Modifier l'article")
                 .font(.title)
                 .bold()
-                .padding(.bottom, 10)
 
             Form {
-                TextField("Nom", text: $name)
-
-                Picker("Type", selection: $type) {
-                    Text("Matériau").tag("Matériau")
-                    Text("Main d'œuvre").tag("Main d'œuvre")
-                    Text("Ouvrage").tag("Ouvrage")
+                Section(header: Text("Détails de l'article").bold()) {
+                    TextField("Nom", text: $name)
+                    TextField("Type", text: $type)
+                    TextField("Unité", text: $unit)
+                    TextField("Déboursé sec (€ HT)", text: $cost)
+                    TextField("Prix facturé (€ HT)", text: $price)
+                    TextField("Marge (%)", text: $marginPercentage)
                 }
-                .pickerStyle(SegmentedPickerStyle())
-
-                TextField("Unité", text: $unit)
-                TextField("Déboursé sec", text: $cost)
-                TextField("Prix facturé", text: $price)
-                TextField("Marge (%)", text: $marginPercentage)
-                TextField("Marge (€)", text: $marginAmount)
             }
 
-            Spacer()
+            HStack {
+                Button("Annuler") {
+                    dismiss()
+                }
+                .foregroundColor(.blue)
 
-            Button("💾 Enregistrer") {
-                saveArticle()
+                Spacer()
+
+                Button("Enregistrer") {
+                    saveChanges()
+                }
+                .foregroundColor(.green)
             }
-            .buttonStyle(.borderedProminent)
             .padding()
         }
+        .padding()
     }
 
-    private func saveArticle() {
+    private func saveChanges() {
         article.name = name
         article.type = type
         article.unit = unit
-        article.cost = cost
-        article.price = price
-        article.marginPercentage = marginPercentage
-        article.marginAmount = marginAmount
+        article.cost = Double(cost) ?? 0.0
+        article.price = Double(price) ?? 0.0
+        article.marginPercentage = Double(marginPercentage) ?? 0.0
 
         do {
             try viewContext.save()
             dismiss()
         } catch {
-            print("❌ Erreur lors de l'enregistrement : \(error.localizedDescription)")
+            print("Erreur lors de l'enregistrement : \(error)")
         }
     }
 }

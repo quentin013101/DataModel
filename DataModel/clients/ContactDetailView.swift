@@ -1,235 +1,201 @@
 import SwiftUI
+import CoreData
 
 struct ContactDetailView: View {
     @Environment(\.managedObjectContext) private var viewContext
-    @Environment(\.dismiss) var dismiss
+    @Environment(\.dismiss) private var dismiss
 
-    @State private var isEditing = false // 🔹 Active/Désactive l'édition
-    @State private var showDeleteAlert = false // 🔹 Gère l'affichage de l'alerte de suppression
+    let contact: Contact
 
-    @State private var clientType: String
-    @State private var civility: String
     @State private var firstName: String
     @State private var lastName: String
-    @State private var fiscalNumber: String
-    @State private var email: String
-    @State private var phoneNumber: String
     @State private var street: String
-    @State private var addressDetail: String
     @State private var postalCode: String
     @State private var city: String
-    @State private var country: String
-    @State private var notes: String
+    @State private var phoneNumber: String
+    @State private var email: String
+    @State private var clientType: String
+    @State private var fiscalNumber: String
 
-    var contact: Contact
+    @State private var postalCodeError: String? = nil
+    @State private var phoneError: String? = nil
+    @State private var emailError: String? = nil
+
+    @State private var isEditing = false
+    @State private var showingDeleteAlert = false // ✅ Variable pour l'alerte de suppression
 
     init(contact: Contact) {
         self.contact = contact
-        _clientType = State(initialValue: contact.clientType ?? "Particulier")
-        _civility = State(initialValue: contact.civility ?? "M.")
         _firstName = State(initialValue: contact.firstName ?? "")
         _lastName = State(initialValue: contact.lastName ?? "")
-        _fiscalNumber = State(initialValue: contact.fiscalNumber ?? "")
-        _email = State(initialValue: contact.email ?? "")
-        _phoneNumber = State(initialValue: contact.phoneNumber ?? "")
         _street = State(initialValue: contact.street ?? "")
-        _addressDetail = State(initialValue: contact.addressDetail ?? "")
         _postalCode = State(initialValue: contact.postalCode ?? "")
         _city = State(initialValue: contact.city ?? "")
-        _country = State(initialValue: contact.country ?? "France")
-        _notes = State(initialValue: contact.notes ?? "")
+        _phoneNumber = State(initialValue: contact.phoneNumber ?? "")
+        _email = State(initialValue: contact.email ?? "")
+        _clientType = State(initialValue: contact.clientType ?? "Particulier")
+        _fiscalNumber = State(initialValue: contact.fiscalNumber ?? "")
+    }
+
+    var isFormValid: Bool {
+        return postalCodeError == nil && phoneError == nil && emailError == nil && !lastName.isEmpty
     }
 
     var body: some View {
-        VStack {
-            // 🔹 Bouton Fermer
+        VStack(alignment: .leading, spacing: 20) {
+            // 🔹 En-tête avec croix de fermeture et titre centré
             HStack {
+                Spacer()
+                Text("Détails du Client")
+                    .font(.title)
+                    .bold()
                 Spacer()
                 Button(action: { dismiss() }) {
                     Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(.gray)
                         .font(.title)
+                        .foregroundColor(.gray)
                 }
-                .padding()
             }
+            .padding(.bottom, 10)
 
-            Text("Détails du Contact")
-                .font(.title)
-                .bold()
-                .padding(.bottom, 10)
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: 15) {
-                    Text("Type").bold()
+            Form {
+                // 🔹 Type de client
+                Section(header: Text("Type de Client").bold().frame(maxWidth: .infinity, alignment: .center)) {
                     Picker("Type", selection: $clientType) {
                         Text("Particulier").tag("Particulier")
                         Text("Entreprise").tag("Entreprise")
                     }
                     .pickerStyle(SegmentedPickerStyle())
                     .disabled(!isEditing)
-
-                    Text("Civilité").bold()
-                    Picker("Civilité", selection: $civility) {
-                        Text("M.").tag("M.")
-                        Text("Mme").tag("Mme")
-                    }
-                    .pickerStyle(MenuPickerStyle())
-                    .disabled(!isEditing)
-
-                    Text("Prénom").bold()
-                    TextField("Prénom", text: $firstName)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .disabled(!isEditing)
-
-                    Text("Nom").bold()
-                    TextField("Nom", text: $lastName)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .disabled(!isEditing)
-
-                    Text("Numéro fiscal").bold()
-                    TextField("Numéro fiscal", text: $fiscalNumber)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .disabled(!isEditing)
-
-                    Text("Adresse email").bold()
-                    TextField("Adresse email", text: $email)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .disabled(!isEditing)
-
-                    Text("Téléphone").bold()
-                    TextField("Téléphone", text: $phoneNumber)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .disabled(!isEditing)
-
-                    Text("Adresse").bold()
-                    TextField("Numéro et voie", text: $street)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .disabled(!isEditing)
-
-                    Text("Complément d’adresse").bold()
-                    TextField("Complément d’adresse", text: $addressDetail)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .disabled(!isEditing)
-
-                    HStack {
-                        VStack(alignment: .leading) {
-                            Text("Code postal").bold()
-                            TextField("Code postal", text: $postalCode)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
-                                .disabled(!isEditing)
-                        }
-                        VStack(alignment: .leading) {
-                            Text("Ville").bold()
-                            TextField("Ville", text: $city)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
-                                .disabled(!isEditing)
-                        }
-                    }
-
-                    Text("Pays").bold()
-                    TextField("Pays", text: $country)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .disabled(!isEditing)
-
-                    Text("Notes").bold()
-                    TextEditor(text: $notes)
-                        .frame(height: 100)
-                        .border(Color.gray, width: 0.5)
-                        .disabled(!isEditing)
                 }
-                .padding(.horizontal)
+
+                // 🔹 Informations personnelles
+                Section(header: Text("Informations Personnelles").bold().frame(maxWidth: .infinity, alignment: .center)) {
+                    InputField(label: "Prénom", text: $firstName, isEditing: isEditing)
+                    InputField(label: "Nom *", text: $lastName, isEditing: isEditing)
+                    VStack(alignment: .leading) {
+                        Text("Numéro Fiscal")
+                            .frame(width: 120, alignment: .leading)
+                            .bold()
+
+                        if clientType == "Entreprise" {
+                            TextField("", text: $fiscalNumber)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .disabled(!isEditing)
+                                .transition(.opacity) // Animation fluide
+                        } else {
+                            TextField("", text: .constant("")) // Champ invisible mais conserve la place
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .hidden()
+                                .frame(height: 0) // Hauteur nulle pour éviter l'expansion
+                        }
+                    }                }
+
+                // 🔹 Coordonnées
+                Section(header: Text("Coordonnées").bold().frame(maxWidth: .infinity, alignment: .center)) {
+                    InputField(label: "Adresse", text: $street, isEditing: isEditing)
+                    
+                    InputFieldWithError(label: "Code Postal", text: $postalCode, error: $postalCodeError, isEditing: isEditing)
+                        .onChange(of: postalCode) { _ in postalCodeError = validatePostalCode() }
+
+                    InputField(label: "Ville", text: $city, isEditing: isEditing)
+
+                    InputFieldWithError(label: "Téléphone", text: $phoneNumber, error: $phoneError, isEditing: isEditing)
+                        .onChange(of: phoneNumber) { _ in phoneError = validatePhoneNumber() }
+
+                    InputFieldWithError(label: "Email", text: $email, error: $emailError, isEditing: isEditing)
+                        .onChange(of: email) { _ in emailError = validateEmail() }
+                }
             }
 
-            Spacer()
-
-            // 📌 Boutons
+            // 🔹 Boutons en bas
             HStack {
-                Button("Annuler") {
-                    if isEditing {
-                        resetFields()
-                        isEditing = false
-                    } else {
-                        dismiss()
-                    }
+                // 🔵 Annuler (à gauche)
+                Button(action: { dismiss() }) {
+                    Text("Annuler")
+                        .bold()
+                        .foregroundColor(.blue)
                 }
-                .buttonStyle(.bordered)
 
                 Spacer()
 
-                if isEditing {
-                    Button("💾 Enregistrer") {
-                        saveContact()
+                // 🔵 Modifier / Enregistrer (à droite)
+                Button(action: {
+                    if isEditing {
+                        saveChanges()
                     }
-                    .buttonStyle(.borderedProminent)
-                } else {
-                    Button("✏️ Modifier") {
-                        isEditing = true
-                    }
-                    .buttonStyle(.bordered)
+                    isEditing.toggle()
+                }) {
+                    Text(isEditing ? "✅ Enregistrer" : "✏️ Modifier")
+                        .bold()
+                        .foregroundColor(isEditing ? Color.green : Color.blue)
                 }
+                .disabled(isEditing && !isFormValid) // ✅ Désactiver si erreur
             }
-            .padding()
+            .padding(.horizontal)
+            .padding(.top, 10)
 
-            // 🗑 Bouton Supprimer
-            Button("🗑 Supprimer ce contact") {
-                showDeleteAlert = true
+            // 🔴 Bouton Supprimer (centré en dessous avec confirmation)
+            Button(action: {
+                showingDeleteAlert = true // ✅ Affiche la boîte de confirmation
+            }) {
+                Text("🗑️ Supprimer")
+                    .bold()
+                    .foregroundColor(.red)
             }
-            .foregroundColor(.red)
-            .padding()
-            .alert("Supprimer ce contact ?", isPresented: $showDeleteAlert) {
-                Button("Annuler", role: .cancel) {}
-                Button("Supprimer", role: .destructive) {
-                    deleteContact()
-                }
-            } message: {
-                Text("Cette action est irréversible.")
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(.top, 10)
+            .alert(isPresented: $showingDeleteAlert) { // ✅ Affichage de la boîte de dialogue
+                Alert(
+                    title: Text("Confirmer la suppression"),
+                    message: Text("Êtes-vous sûr de vouloir supprimer ce contact ? Cette action est irréversible."),
+                    primaryButton: .destructive(Text("Supprimer")) {
+                        deleteContact() // ✅ Suppression confirmée
+                    },
+                    secondaryButton: .cancel(Text("Annuler"))
+                )
             }
         }
-        .frame(minWidth: 500, minHeight: 600)
         .padding()
     }
-    
-    private func saveContact() {
-        contact.clientType = clientType
-        contact.civility = civility
+
+    // ✅ Fonctions de validation
+    private func validatePostalCode() -> String? {
+        let regex = "^[0-9]{5}$"
+        return postalCode.range(of: regex, options: .regularExpression) != nil ? nil : "Code postal invalide"
+    }
+
+    private func validatePhoneNumber() -> String? {
+        let regex = "^0[67][0-9]{8}$"
+        return phoneNumber.range(of: regex, options: .regularExpression) != nil ? nil : "Numéro invalide"
+    }
+
+    private func validateEmail() -> String? {
+        let regex = "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
+        return email.range(of: regex, options: .regularExpression) != nil ? nil : "Email invalide"
+    }
+
+    private func saveChanges() {
         contact.firstName = firstName
         contact.lastName = lastName
-        contact.fiscalNumber = fiscalNumber
-        contact.email = email
-        contact.phoneNumber = phoneNumber
         contact.street = street
-        contact.addressDetail = addressDetail
         contact.postalCode = postalCode
         contact.city = city
-        contact.country = country
-        contact.notes = notes
-
+        contact.phoneNumber = phoneNumber
+        contact.email = email
+        contact.fiscalNumber = fiscalNumber
+        
         do {
             try viewContext.save()
-            dismiss()
+            dismiss() // ✅ Fermer après modification
         } catch {
-            print("❌ Erreur lors de l'enregistrement : \(error.localizedDescription)")
+            print("Erreur lors de l'enregistrement : \(error)")
         }
     }
 
     private func deleteContact() {
         viewContext.delete(contact)
-
-        do {
-            try viewContext.save()
-            dismiss() // 🔥 Ferme la pop-up après suppression
-        } catch {
-            print("❌ Erreur lors de la suppression : \(error.localizedDescription)")
-        }
-    }
-
-    private func resetFields() {
-        firstName = contact.firstName ?? ""
-        lastName = contact.lastName ?? ""
-        email = contact.email ?? ""
-        phoneNumber = contact.phoneNumber ?? ""
-        street = contact.street ?? ""
-        city = contact.city ?? ""
-        notes = contact.notes ?? ""
+        try? viewContext.save()
+        dismiss()
     }
 }
