@@ -5,7 +5,8 @@ struct ContactDetailView: View {
     @Environment(\.dismiss) var dismiss
 
     @State private var isEditing = false // 🔹 Active/Désactive l'édition
-    
+    @State private var showDeleteAlert = false // 🔹 Gère l'affichage de l'alerte de suppression
+
     @State private var clientType: String
     @State private var civility: String
     @State private var firstName: String
@@ -59,7 +60,6 @@ struct ContactDetailView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 15) {
-                    // 📌 Type (Particulier / Entreprise)
                     Text("Type").bold()
                     Picker("Type", selection: $clientType) {
                         Text("Particulier").tag("Particulier")
@@ -68,7 +68,6 @@ struct ContactDetailView: View {
                     .pickerStyle(SegmentedPickerStyle())
                     .disabled(!isEditing)
 
-                    // 📌 Civilité, Prénom, Nom
                     Text("Civilité").bold()
                     Picker("Civilité", selection: $civility) {
                         Text("M.").tag("M.")
@@ -87,25 +86,21 @@ struct ContactDetailView: View {
                         .textFieldStyle(RoundedBorderTextFieldStyle())
                         .disabled(!isEditing)
 
-                    // 📌 Numéro fiscal
                     Text("Numéro fiscal").bold()
                     TextField("Numéro fiscal", text: $fiscalNumber)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
                         .disabled(!isEditing)
 
-                    // 📌 Adresse email
                     Text("Adresse email").bold()
                     TextField("Adresse email", text: $email)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
                         .disabled(!isEditing)
 
-                    // 📌 Téléphone
                     Text("Téléphone").bold()
                     TextField("Téléphone", text: $phoneNumber)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
                         .disabled(!isEditing)
 
-                    // 📌 Adresse complète
                     Text("Adresse").bold()
                     TextField("Numéro et voie", text: $street)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
@@ -136,7 +131,6 @@ struct ContactDetailView: View {
                         .textFieldStyle(RoundedBorderTextFieldStyle())
                         .disabled(!isEditing)
 
-                    // 📌 Notes
                     Text("Notes").bold()
                     TextEditor(text: $notes)
                         .frame(height: 100)
@@ -152,7 +146,7 @@ struct ContactDetailView: View {
             HStack {
                 Button("Annuler") {
                     if isEditing {
-                        resetFields() // 🔄 Réinitialise les champs en mode édition
+                        resetFields()
                         isEditing = false
                     } else {
                         dismiss()
@@ -175,6 +169,21 @@ struct ContactDetailView: View {
                 }
             }
             .padding()
+
+            // 🗑 Bouton Supprimer
+            Button("🗑 Supprimer ce contact") {
+                showDeleteAlert = true
+            }
+            .foregroundColor(.red)
+            .padding()
+            .alert("Supprimer ce contact ?", isPresented: $showDeleteAlert) {
+                Button("Annuler", role: .cancel) {}
+                Button("Supprimer", role: .destructive) {
+                    deleteContact()
+                }
+            } message: {
+                Text("Cette action est irréversible.")
+            }
         }
         .frame(minWidth: 500, minHeight: 600)
         .padding()
@@ -197,25 +206,30 @@ struct ContactDetailView: View {
 
         do {
             try viewContext.save()
-            dismiss() // 🔥 Ferme la pop-up après l'enregistrement
+            dismiss()
         } catch {
             print("❌ Erreur lors de l'enregistrement : \(error.localizedDescription)")
         }
     }
 
+    private func deleteContact() {
+        viewContext.delete(contact)
+
+        do {
+            try viewContext.save()
+            dismiss() // 🔥 Ferme la pop-up après suppression
+        } catch {
+            print("❌ Erreur lors de la suppression : \(error.localizedDescription)")
+        }
+    }
+
     private func resetFields() {
-        clientType = contact.clientType ?? "Particulier"
-        civility = contact.civility ?? "M."
         firstName = contact.firstName ?? ""
         lastName = contact.lastName ?? ""
-        fiscalNumber = contact.fiscalNumber ?? ""
         email = contact.email ?? ""
         phoneNumber = contact.phoneNumber ?? ""
         street = contact.street ?? ""
-        addressDetail = contact.addressDetail ?? ""
-        postalCode = contact.postalCode ?? ""
         city = contact.city ?? ""
-        country = contact.country ?? "France"
         notes = contact.notes ?? ""
     }
 }

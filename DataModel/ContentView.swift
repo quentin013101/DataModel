@@ -1,14 +1,25 @@
 import SwiftUI
 
 struct ContentView: View {
-    @Environment(\.managedObjectContext) private var viewContext
-    
+    @Binding var selectedTab: String // 🔹 Permet de gérer la sélection
+
     var body: some View {
-        ContactListView()
-            .environment(\.managedObjectContext, viewContext)
+        NavigationSplitView {
+            SidebarView(selectedTab: $selectedTab) // 🔥 Passe selectedTab à la sidebar
+        } detail: {
+            if selectedTab == "clients" {
+                ContactListView(selectedTab: $selectedTab)
+            } else if selectedTab == "articles" {
+                ArticleListView(selectedTab: $selectedTab)
+            } else {
+                Text("Sélectionnez un élément")
+                    .foregroundColor(.blue)
+                    .font(.title2)
+            }
+        }
     }
 }
 
 #Preview {
-    ContentView().environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
+    ContentView(selectedTab: .constant("clients"))
 }
