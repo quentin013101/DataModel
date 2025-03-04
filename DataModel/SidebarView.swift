@@ -1,26 +1,61 @@
 import SwiftUI
 
 struct SidebarView: View {
-    @Environment(\.managedObjectContext) private var viewContext
-        @Binding var selectedTab: String // 🔹 Gère la sélection active
-        @State private var showingNewQuote = false // ✅ Ajout de l'état pour afficher la vue de devis
-
+    @Binding var selectedTab: String
 
     var body: some View {
         List {
             Section(header: Text("ACTIONS")) {
-                Button(action: { showingNewQuote = true }) {
-                                    SidebarItem(title: "Créez un devis")
-                                }
-                                .buttonStyle(PlainButtonStyle()) // ✅ Supprime l'effet par défaut
-                                
-                SidebarItem(title: "Créez une facture")
+                Button(action: { selectedTab = "devis" }) {
+                    HStack {
+                        Text("Créer un devis")
+                            .foregroundColor(selectedTab == "devis" ? .blue : .primary)
+                            .bold(selectedTab == "devis")
+                        Spacer()
+                    }
+                    .padding(.vertical, 10)
+                    .padding(.leading, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(selectedTab == "devis" ? Color.blue.opacity(0.2) : Color.clear)
+                    .cornerRadius(8)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(PlainButtonStyle())
+
+                Button(action: { selectedTab = "facture" }) {
+                    HStack {
+                        Text("Créer une facture")
+                            .foregroundColor(selectedTab == "facture" ? .blue : .primary)
+                            .bold(selectedTab == "facture")
+                        Spacer()
+                    }
+                    .padding(.vertical, 10)
+                    .padding(.leading, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(selectedTab == "facture" ? Color.blue.opacity(0.2) : Color.clear)
+                    .cornerRadius(8)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(PlainButtonStyle())
             }
 
             Section(header: Text("LISTE")) {
-                SidebarItem(title: "Devis / Factures")
+                Button(action: { selectedTab = "devisFactures" }) {
+                    HStack {
+                        Text("Devis / Factures")
+                            .foregroundColor(selectedTab == "devisFactures" ? .blue : .primary)
+                            .bold(selectedTab == "devisFactures")
+                        Spacer()
+                    }
+                    .padding(.vertical, 10)
+                    .padding(.leading, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(selectedTab == "devisFactures" ? Color.blue.opacity(0.2) : Color.clear)
+                    .cornerRadius(8)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(PlainButtonStyle())
 
-                // ✅ Bouton pour "Clients" (décalé et toute la largeur cliquable)
                 Button(action: { selectedTab = "clients" }) {
                     HStack {
                         Text("Clients")
@@ -29,15 +64,14 @@ struct SidebarView: View {
                         Spacer()
                     }
                     .padding(.vertical, 10)
-                    .padding(.leading, 8) // 🔹 Décalage vers la gauche
-                    .frame(maxWidth: .infinity, alignment: .leading) // 🔹 Toute la ligne cliquable
+                    .padding(.leading, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .background(selectedTab == "clients" ? Color.blue.opacity(0.2) : Color.clear)
-                    .cornerRadius(8) // ✅ Angles arrondis
-                    .contentShape(Rectangle()) // 🔥 Rend tout cliquable
+                    .cornerRadius(8)
+                    .contentShape(Rectangle())
                 }
-                .buttonStyle(PlainButtonStyle()) // ❌ Supprime l'effet par défaut
+                .buttonStyle(PlainButtonStyle())
 
-                // ✅ Bouton pour "Articles" (décalé et toute la largeur cliquable)
                 Button(action: { selectedTab = "articles" }) {
                     HStack {
                         Text("Articles")
@@ -46,34 +80,51 @@ struct SidebarView: View {
                         Spacer()
                     }
                     .padding(.vertical, 10)
-                    .padding(.leading, 8) // 🔹 Décalage vers la gauche
+                    .padding(.leading, 8)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(selectedTab == "articles" ? Color.blue.opacity(0.2) : Color.clear)
-                    .cornerRadius(8) // ✅ Angles arrondis
-                    .contentShape(Rectangle()) // 🔥 Rend tout cliquable
+                    .cornerRadius(8)
+                    .contentShape(Rectangle())
                 }
-                .buttonStyle(PlainButtonStyle()) // ❌ Supprime l'effet par défaut
+                .buttonStyle(PlainButtonStyle())
             }
 
             Section(header: Text("PILOTAGE")) {
-                SidebarItem(title: "Tableau de bord")
-                SidebarItem(title: "Tableau d’analyse")
+                Button(action: { selectedTab = "dashboard" }) {
+                    HStack {
+                        Text("Tableau de bord")
+                            .foregroundColor(selectedTab == "dashboard" ? .blue : .primary)
+                            .bold(selectedTab == "dashboard")
+                        Spacer()
+                    }
+                    .padding(.vertical, 10)
+                    .padding(.leading, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(selectedTab == "dashboard" ? Color.blue.opacity(0.2) : Color.clear)
+                    .cornerRadius(8)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(PlainButtonStyle())
+
+                Button(action: { selectedTab = "analysis" }) {
+                    HStack {
+                        Text("Tableau d’analyse")
+                            .foregroundColor(selectedTab == "analysis" ? .blue : .primary)
+                            .bold(selectedTab == "analysis")
+                        Spacer()
+                    }
+                    .padding(.vertical, 10)
+                    .padding(.leading, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(selectedTab == "analysis" ? Color.blue.opacity(0.2) : Color.clear)
+                    .cornerRadius(8)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(PlainButtonStyle())
             }
         }
         .listStyle(SidebarListStyle())
         .frame(minWidth: 250)
-    }
-}
-
-// ✅ Correction de SidebarItem (avec léger décalage)
-struct SidebarItem: View {
-    let title: String
-
-    var body: some View {
-        Text(title)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.vertical, 8)
-            .padding(.leading, 8) // 🔹 Décalage vers la gauche
     }
 }
 
