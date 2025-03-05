@@ -21,7 +21,7 @@ struct AddContactView: View {
     @State private var emailError: String? = nil
 
     let clientTypes = ["Particulier", "Entreprise"]
-    let civilities = ["M.", "Mme", "Mlle", "Dr", "Pr"]
+    let civilities = ["M.", "Mme", "Mlle"]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {

@@ -5,11 +5,16 @@ struct AddArticleView: View {
     @Environment(\.dismiss) var dismiss
 
     @State private var name = ""
-    @State private var type = ""
-    @State private var unit = ""
-    @State private var cost = ""
-    @State private var price = ""
-    @State private var marginPercentage = ""
+    @State private var type = "Matériaux" // Par défaut
+    @State private var unit = "u" // Par défaut
+    @State private var costString = ""
+    @State private var priceString = ""
+    @State private var marginString = ""
+    @State private var isEditingPrice = false
+    @State private var isEditingMargin = false
+
+    private let types = ["Matériaux", "Main d'œuvre", "Ouvrage"]
+    private let units = ["hr", "u", "m", "m²", "m3", "ml", "l", "kg"]
 
     var body: some View {
         VStack(spacing: 20) {
@@ -20,26 +25,40 @@ struct AddArticleView: View {
             Form {
                 Section(header: Text("Détails de l'article").bold()) {
                     TextField("Nom", text: $name)
-                    TextField("Type", text: $type)
-                    TextField("Unité", text: $unit)
-                    TextField("Déboursé sec (€ HT)", text: $cost)
-                    TextField("Prix facturé (€ HT)", text: $price)
-                    TextField("Marge (%)", text: $marginPercentage)
+
+                    Picker("Type", selection: $type) {
+                        ForEach(types, id: \.self) { Text($0) }
+                    }
+                    .pickerStyle(SegmentedPickerStyle())
+
+                    Picker("Unité", selection: $unit) {
+                        ForEach(units, id: \.self) { Text($0) }
+                    }
+                    .pickerStyle(MenuPickerStyle())
+
+                    TextField("Déboursé sec (€ HT)", text: $costString)
+                        .onChange(of: costString) { _ in updatePriceFromMargin() }
+
+                    TextField("Prix facturé (€ HT)", text: $priceString, onEditingChanged: { editing in
+                        isEditingPrice = editing
+                        if !editing { updateMarginFromPrice() }
+                    })
+
+                    TextField("Marge (%)", text: $marginString, onEditingChanged: { editing in
+                        isEditingMargin = editing
+                        if !editing { updatePriceFromMargin() }
+                    })
                 }
             }
 
             HStack {
-                Button("Annuler") {
-                    dismiss()
-                }
-                .foregroundColor(.blue)
+                Button("Annuler") { dismiss() }
+                    .foregroundColor(.blue)
 
                 Spacer()
 
-                Button("Enregistrer") {
-                    saveArticle()
-                }
-                .foregroundColor(.green)
+                Button("Enregistrer") { saveArticle() }
+                    .foregroundColor(.green)
             }
             .padding()
         }
@@ -51,9 +70,9 @@ struct AddArticleView: View {
         newArticle.name = name
         newArticle.type = type
         newArticle.unit = unit
-        newArticle.cost = Double(cost) ?? 0.0
-        newArticle.price = Double(price) ?? 0.0
-        newArticle.marginPercentage = Double(marginPercentage) ?? 0.0
+        newArticle.cost = Double(costString.replacingOccurrences(of: ",", with: ".")) ?? 0.0
+        newArticle.price = Double(priceString.replacingOccurrences(of: ",", with: ".")) ?? 0.0
+        newArticle.marginPercentage = Double(marginString.replacingOccurrences(of: ",", with: ".")) ?? 0.0
 
         do {
             try viewContext.save()
@@ -61,5 +80,27 @@ struct AddArticleView: View {
         } catch {
             print("Erreur lors de l'enregistrement : \(error)")
         }
+    }
+
+    private func updatePriceFromMargin() {
+        guard !isEditingPrice else { return }
+        if let cost = Double(costString.replacingOccurrences(of: ",", with: ".")),
+           let margin = Double(marginString.replacingOccurrences(of: ",", with: ".")) {
+            let newPrice = cost * (1 + margin / 100)
+            priceString = formatNumber(newPrice)
+        }
+    }
+
+    private func updateMarginFromPrice() {
+        guard !isEditingMargin else { return }
+        if let cost = Double(costString.replacingOccurrences(of: ",", with: ".")),
+           let price = Double(priceString.replacingOccurrences(of: ",", with: ".")), cost > 0 {
+            let newMargin = ((price / cost) - 1) * 100
+            marginString = formatNumber(newMargin)
+        }
+    }
+
+    private func formatNumber(_ value: Double) -> String {
+        return String(format: "%.2f", value)
     }
 }
