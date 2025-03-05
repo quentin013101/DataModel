@@ -1,6 +1,5 @@
 import SwiftUI
 import PDFKit
-
 // ✅ Déclaration unique pour éviter les conflits
 struct PDFWrapper: Identifiable {
     let id = UUID()
@@ -19,6 +18,7 @@ struct NewQuoteView: View {
     @State private var showingPDF = false
     @State private var showingClientSelection = false
     @State private var showingArticleSelection = false
+    @State private var selectedArticles: [Article] = []
 
     var body: some View {
         VStack(spacing: 20) {
@@ -32,11 +32,11 @@ struct NewQuoteView: View {
                 }
             }
             .padding(.horizontal)
-
+            
             Text("Devis n° DEV-2025-0006")
                 .font(.title)
                 .bold()
-
+            
             // 🔹 Section Client & Adresse
             HStack(alignment: .top, spacing: 30) {
                 VStack(alignment: .leading, spacing: 5) {
@@ -54,7 +54,7 @@ struct NewQuoteView: View {
                         }
                     }
                 }
-
+                
                 VStack(alignment: .leading, spacing: 5) {
                     Text("Adresse du projet :").font(.headline)
                     TextField("Ajouter une adresse", text: $projectAddress)
@@ -63,7 +63,7 @@ struct NewQuoteView: View {
                 }
             }
             .padding()
-
+            
             // 🔹 Section Articles
             VStack {
                 HStack {
@@ -76,7 +76,7 @@ struct NewQuoteView: View {
                 .padding()
                 .background(Color.gray.opacity(0.3))
                 .cornerRadius(5)
-
+                
                 // 🔹 Affichage des articles sélectionnés
                 ForEach($quoteArticles, id: \.self) { $quoteArticle in
                     HStack {
@@ -87,35 +87,33 @@ struct NewQuoteView: View {
                                 .foregroundColor(.red)
                         }
                         .buttonStyle(PlainButtonStyle())
-
-                        Text($quoteArticle.article.wrappedValue?.name ?? "-").frame(width: 200, alignment: .leading)
-
+                        
+                        Text($quoteArticle.article.wrappedValue?.name ?? "-")
+                            .frame(width: 200, alignment: .leading)
+                        
                         Spacer()
-
+                        
                         TextField("Qté", value: $quoteArticle.quantity, format: .number)
                             .frame(width: 50)
                             .textFieldStyle(RoundedBorderTextFieldStyle())
-
-                        TextField("Prix", value: Binding(
-                            get: { $quoteArticle.unitPrice.wrappedValue },
-                            set: { $quoteArticle.unitPrice.wrappedValue = $0 }
-                        ), format: .currency(code: "EUR"))
-                        .frame(width: 80)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-
-                        Text(String(format: "%.2f €", ($quoteArticle.unitPrice.wrappedValue ?? 0) * Double($quoteArticle.quantity.wrappedValue)))
+                        
+                        TextField("Prix", value: $quoteArticle.unitPrice, format: .currency(code: "EUR"))
+                            .frame(width: 80)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                        
+                        Text(String(format: "%.2f €", $quoteArticle.unitPrice.wrappedValue * Double($quoteArticle.quantity.wrappedValue)))
                             .frame(width: 80, alignment: .trailing)
                     }
                     .padding(.vertical, 5)
                 }
-
+                
                 Button("+ Ajouter un article") {
                     showingArticleSelection = true
                 }
                 .foregroundColor(.blue)
             }
             .padding()
-
+            
             // 🔹 Section Total
             VStack {
                 HStack {
@@ -127,18 +125,18 @@ struct NewQuoteView: View {
             .padding()
             .background(Color.gray.opacity(0.1))
             .cornerRadius(5)
-
+            
             // 🔹 Boutons d'action
             HStack {
                 Button("Annuler") { dismiss() }
                     .foregroundColor(.blue)
-
+                
                 Spacer()
-
+                
                 Button("Enregistrer") { saveQuote() }
                     .foregroundColor(.green)
                     .disabled(selectedClient == nil || quoteArticles.isEmpty)
-
+                
                 Button("Générer PDF") {
                     if let wrapper = generatePDF() {
                         pdfWrapper = wrapper
@@ -150,20 +148,24 @@ struct NewQuoteView: View {
             .padding()
         }
         .padding()
-        // ✅ Ajout des sheets pour la sélection de client et d'articles
         .popover(isPresented: $showingClientSelection, arrowEdge: .top) {
             ClientSelectionView(selectedClient: $selectedClient)
                 .environment(\.managedObjectContext, viewContext)
                 .frame(minWidth: 400, minHeight: 500)
         }
-
         .popover(isPresented: $showingArticleSelection, arrowEdge: .top) {
-            ArticleSelectionView(selectedArticles: Binding(
-                get: { quoteArticles },
-                set: { newArticles in
-                    quoteArticles = newArticles
+            ArticleSelectionView(
+                onArticleSelected: { article, quantity in
+                    let newQuoteArticle = QuoteArticle(context: viewContext)
+                    newQuoteArticle.article = article
+                    newQuoteArticle.quantity = quantity  // ✅ Utilise la quantité sélectionnée
+                    newQuoteArticle.unitPrice = article.price
+
+                    quoteArticles.append(newQuoteArticle) // ✅ Ajout correct
+
+                    try? viewContext.save() // ✅ Sauvegarde Core Data
                 }
-            ))
+            )
             .environment(\.managedObjectContext, viewContext)
             .frame(minWidth: 400, minHeight: 500)
         }
@@ -200,6 +202,7 @@ struct NewQuoteView: View {
         }
     }
 }
+
 // ✅ Génération du PDF
 private func generatePDF() -> PDFWrapper? {
     let pdfDocument = PDFDocument()
