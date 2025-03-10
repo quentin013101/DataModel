@@ -60,7 +60,7 @@ struct ArticleListView: View {
             Divider()
             let columns: [GridItem] = [
                 GridItem(.fixed(100), alignment: .leading),  // Type
-                GridItem(.fixed(500), alignment: .leading),  // Nom
+                GridItem(.fixed(520), alignment: .leading),  // Nom
                 GridItem(.fixed(80), alignment: .leading),   // Unité
                 GridItem(.fixed(100), alignment: .trailing), // Coût
                 GridItem(.fixed(100), alignment: .trailing), // Marge
@@ -75,7 +75,7 @@ struct ArticleListView: View {
                 Text("Marge (%)").bold()
                 Text("Prix").bold()
             }
-            .padding()
+            .padding(.vertical, 5)
             .background(Color.gray.opacity(0.2))
             .cornerRadius(8)
 
@@ -105,7 +105,7 @@ struct ArticleListView: View {
                                             .frame(width: 100, alignment: .leading)
 
                                         Text(article.name ?? "Sans nom")
-                                            .frame(width: 500, alignment: .leading)
+                                            .frame(width: 520, alignment: .leading)
 
                                         Text(article.unit ?? "-")
                                             .frame(width: 80, alignment: .leading)

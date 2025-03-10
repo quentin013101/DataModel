@@ -8,7 +8,6 @@
         <attribute name="price" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
         <attribute name="type" optional="YES" attributeType="String"/>
         <attribute name="unit" optional="YES" attributeType="String"/>
-        <relationship name="quote" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="QuoteArticle" inverseName="article" inverseEntity="QuoteArticle"/>
     </entity>
     <entity name="Contact" representedClassName="Contact" syncable="YES" codeGenerationType="class">
         <attribute name="addressDetail" optional="YES" attributeType="String"/>
@@ -36,12 +35,5 @@
         <attribute name="title" optional="YES" attributeType="String"/>
         <attribute name="total" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
         <relationship name="client" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Contact" inverseName="quote" inverseEntity="Contact"/>
-        <relationship name="quoteArticle" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="QuoteArticle" inverseName="quote" inverseEntity="QuoteArticle"/>
-    </entity>
-    <entity name="QuoteArticle" representedClassName="QuoteArticle" syncable="YES" codeGenerationType="class">
-        <attribute name="quantity" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
-        <attribute name="unitPrice" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
-        <relationship name="article" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Article" inverseName="quote" inverseEntity="Article"/>
-        <relationship name="quote" optional="YES" maxCount="1" deletionRule="Cascade" destinationEntity="Quote" inverseName="quoteArticle" inverseEntity="Quote"/>
     </entity>
 </model>

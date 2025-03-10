@@ -3,17 +3,15 @@ import SwiftUI
 struct EditArticleView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.dismiss) var dismiss
-    
+
     var article: Article
 
     @State private var name: String
     @State private var type: String
     @State private var unit: String
-    @State private var costString: String
-    @State private var priceString: String
-    @State private var marginString: String
-    @State private var isEditingPrice = false
-    @State private var isEditingMargin = false
+    @State private var cost: Double
+    @State private var price: Double
+    @State private var marginPercentage: Double
 
     private let types = ["Matériaux", "Main d'œuvre", "Ouvrage"]
     private let units = ["hr", "u", "m", "m²", "m3", "ml", "l", "kg"]
@@ -23,9 +21,9 @@ struct EditArticleView: View {
         _name = State(initialValue: article.name ?? "")
         _type = State(initialValue: article.type ?? "Matériaux")
         _unit = State(initialValue: article.unit ?? "u")
-        _costString = State(initialValue: EditArticleView.formatNumber(article.cost))
-        _priceString = State(initialValue: EditArticleView.formatNumber(article.price))
-        _marginString = State(initialValue: EditArticleView.formatNumber(article.marginPercentage))
+        _cost = State(initialValue: article.cost)
+        _price = State(initialValue: article.price)
+        _marginPercentage = State(initialValue: article.marginPercentage)
     }
 
     var body: some View {
@@ -48,18 +46,31 @@ struct EditArticleView: View {
                     }
                     .pickerStyle(MenuPickerStyle())
 
-                    TextField("Déboursé sec (€ HT)", text: $costString)
-                        .onChange(of: costString) { _ in updatePriceFromMargin() }
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack {
+                            Text("Déboursé sec (€ HT)")
+                                .frame(width: 180, alignment: .leading)
+                            TextField("", value: $cost, format: .number)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .frame(width: 100)
+                        }
 
-                    TextField("Prix facturé (€ HT)", text: $priceString, onEditingChanged: { editing in
-                        isEditingPrice = editing
-                        if !editing { updateMarginFromPrice() } // ✅ Mise à jour seulement quand l'utilisateur finit d'écrire
-                    })
+                        HStack {
+                            Text("Prix facturé (€ HT)")
+                                .frame(width: 180, alignment: .leading)
+                            TextField("", value: $price, format: .number)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .frame(width: 100)
+                        }
 
-                    TextField("Marge (%)", text: $marginString, onEditingChanged: { editing in
-                        isEditingMargin = editing
-                        if !editing { updatePriceFromMargin() } // ✅ Mise à jour seulement quand l'utilisateur finit d'écrire
-                    })
+                        HStack {
+                            Text("Marge (%)")
+                                .frame(width: 180, alignment: .leading)
+                            TextField("", value: $marginPercentage, format: .number)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .frame(width: 100)
+                        }
+                    }
                 }
             }
 
@@ -75,15 +86,18 @@ struct EditArticleView: View {
             .padding()
         }
         .padding()
+        .onChange(of: cost) { _ in updatePriceFromMargin() }
+        .onChange(of: price) { _ in updateMarginFromPrice() }
+        .onChange(of: marginPercentage) { _ in updatePriceFromMargin() }
     }
 
     private func saveChanges() {
         article.name = name
         article.type = type
         article.unit = unit
-        article.cost = Double(costString.replacingOccurrences(of: ",", with: ".")) ?? 0.0
-        article.price = Double(priceString.replacingOccurrences(of: ",", with: ".")) ?? 0.0
-        article.marginPercentage = Double(marginString.replacingOccurrences(of: ",", with: ".")) ?? 0.0
+        article.cost = cost
+        article.price = price
+        article.marginPercentage = marginPercentage
 
         do {
             try viewContext.save()
@@ -94,24 +108,12 @@ struct EditArticleView: View {
     }
 
     private func updatePriceFromMargin() {
-        guard !isEditingPrice else { return } // ✅ Ne pas modifier si l'utilisateur tape un prix
-        if let cost = Double(costString.replacingOccurrences(of: ",", with: ".")),
-           let margin = Double(marginString.replacingOccurrences(of: ",", with: ".")) {
-            let newPrice = cost * (1 + margin / 100)
-            priceString = EditArticleView.formatNumber(newPrice)
-        }
+        price = cost * (1 + marginPercentage / 100)
     }
 
     private func updateMarginFromPrice() {
-        guard !isEditingMargin else { return } // ✅ Ne pas modifier si l'utilisateur tape une marge
-        if let cost = Double(costString.replacingOccurrences(of: ",", with: ".")),
-           let price = Double(priceString.replacingOccurrences(of: ",", with: ".")), cost > 0 {
-            let newMargin = ((price / cost) - 1) * 100
-            marginString = EditArticleView.formatNumber(newMargin)
+        if cost > 0 {
+            marginPercentage = ((price / cost) - 1) * 100
         }
-    }
-
-    static func formatNumber(_ value: Double) -> String {
-        return String(format: "%.2f", value)
     }
 }

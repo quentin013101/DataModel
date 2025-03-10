@@ -2,129 +2,77 @@ import SwiftUI
 
 struct SidebarView: View {
     @Binding var selectedTab: String
+    @State private var showingSettings = false // ✅ État pour afficher les paramètres
 
     var body: some View {
-        List {
-            Section(header: Text("ACTIONS")) {
-                Button(action: { selectedTab = "devis" }) {
-                    HStack {
-                        Text("Créer un devis")
-                            .foregroundColor(selectedTab == "devis" ? .blue : .primary)
-                            .bold(selectedTab == "devis")
-                        Spacer()
-                    }
-                    .padding(.vertical, 10)
-                    .padding(.leading, 8)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(selectedTab == "devis" ? Color.blue.opacity(0.2) : Color.clear)
-                    .cornerRadius(8)
-                    .contentShape(Rectangle())
+        VStack {
+            List {
+                Section(header: Text("ACTIONS")) {
+                    SidebarButton(title: "Créer un devis", tab: "devis", selectedTab: $selectedTab)
+                    SidebarButton(title: "Créer une facture", tab: "facture", selectedTab: $selectedTab)
                 }
-                .buttonStyle(PlainButtonStyle())
 
-                Button(action: { selectedTab = "facture" }) {
-                    HStack {
-                        Text("Créer une facture")
-                            .foregroundColor(selectedTab == "facture" ? .blue : .primary)
-                            .bold(selectedTab == "facture")
-                        Spacer()
-                    }
-                    .padding(.vertical, 10)
-                    .padding(.leading, 8)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(selectedTab == "facture" ? Color.blue.opacity(0.2) : Color.clear)
-                    .cornerRadius(8)
-                    .contentShape(Rectangle())
+                Section(header: Text("LISTE")) {
+                    SidebarButton(title: "Devis / Factures", tab: "devisFactures", selectedTab: $selectedTab)
+                    SidebarButton(title: "Clients", tab: "clients", selectedTab: $selectedTab)
+                    SidebarButton(title: "Articles", tab: "articles", selectedTab: $selectedTab)
                 }
-                .buttonStyle(PlainButtonStyle())
+
+                Section(header: Text("PILOTAGE")) {
+                    SidebarButton(title: "Tableau de bord", tab: "dashboard", selectedTab: $selectedTab)
+                    SidebarButton(title: "Tableau d’analyse", tab: "analysis", selectedTab: $selectedTab)
+                }
             }
+            .listStyle(SidebarListStyle())
 
-            Section(header: Text("LISTE")) {
-                Button(action: { selectedTab = "devisFactures" }) {
-                    HStack {
-                        Text("Devis / Factures")
-                            .foregroundColor(selectedTab == "devisFactures" ? .blue : .primary)
-                            .bold(selectedTab == "devisFactures")
-                        Spacer()
-                    }
-                    .padding(.vertical, 10)
-                    .padding(.leading, 8)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(selectedTab == "devisFactures" ? Color.blue.opacity(0.2) : Color.clear)
-                    .cornerRadius(8)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(PlainButtonStyle())
+            Spacer()
 
-                Button(action: { selectedTab = "clients" }) {
-                    HStack {
-                        Text("Clients")
-                            .foregroundColor(selectedTab == "clients" ? .blue : .primary)
-                            .bold(selectedTab == "clients")
-                        Spacer()
-                    }
-                    .padding(.vertical, 10)
-                    .padding(.leading, 8)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(selectedTab == "clients" ? Color.blue.opacity(0.2) : Color.clear)
-                    .cornerRadius(8)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(PlainButtonStyle())
+            // ✅ Bouton Paramètres en bas de la barre latérale
+            Button(action: { showingSettings = true }) {
+                HStack {
+                    Image(systemName: "gearshape.fill")
 
-                Button(action: { selectedTab = "articles" }) {
-                    HStack {
-                        Text("Articles")
-                            .foregroundColor(selectedTab == "articles" ? .blue : .primary)
-                            .bold(selectedTab == "articles")
-                        Spacer()
-                    }
-                    .padding(.vertical, 10)
-                    .padding(.leading, 8)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(selectedTab == "articles" ? Color.blue.opacity(0.2) : Color.clear)
-                    .cornerRadius(8)
-                    .contentShape(Rectangle())
+                    Text("Paramètres")
                 }
-                .buttonStyle(PlainButtonStyle())
+                .padding()
+                .frame(maxWidth: .infinity)
+                .foregroundColor(.primary)
+                .background(Color.gray.opacity(0.2))
+                .cornerRadius(8)
+                .contentShape(Rectangle())
             }
-
-            Section(header: Text("PILOTAGE")) {
-                Button(action: { selectedTab = "dashboard" }) {
-                    HStack {
-                        Text("Tableau de bord")
-                            .foregroundColor(selectedTab == "dashboard" ? .blue : .primary)
-                            .bold(selectedTab == "dashboard")
-                        Spacer()
-                    }
-                    .padding(.vertical, 10)
-                    .padding(.leading, 8)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(selectedTab == "dashboard" ? Color.blue.opacity(0.2) : Color.clear)
-                    .cornerRadius(8)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(PlainButtonStyle())
-
-                Button(action: { selectedTab = "analysis" }) {
-                    HStack {
-                        Text("Tableau d’analyse")
-                            .foregroundColor(selectedTab == "analysis" ? .blue : .primary)
-                            .bold(selectedTab == "analysis")
-                        Spacer()
-                    }
-                    .padding(.vertical, 10)
-                    .padding(.leading, 8)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(selectedTab == "analysis" ? Color.blue.opacity(0.2) : Color.clear)
-                    .cornerRadius(8)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(PlainButtonStyle())
+            .buttonStyle(PlainButtonStyle())
+            .padding()
+            .sheet(isPresented: $showingSettings) {
+                ParametresView()
             }
         }
-        .listStyle(SidebarListStyle())
         .frame(minWidth: 250)
+    }
+}
+
+// ✅ Composant SidebarButton pour éviter la répétition
+struct SidebarButton: View {
+    let title: String
+    let tab: String
+    @Binding var selectedTab: String
+
+    var body: some View {
+        Button(action: { selectedTab = tab }) {
+            HStack {
+                Text(title)
+                    .foregroundColor(selectedTab == tab ? .blue : .primary)
+                    .bold(selectedTab == tab)
+                Spacer()
+            }
+            .padding(.vertical, 10)
+            .padding(.leading, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(selectedTab == tab ? Color.blue.opacity(0.2) : Color.clear)
+            .cornerRadius(8)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 }
 
