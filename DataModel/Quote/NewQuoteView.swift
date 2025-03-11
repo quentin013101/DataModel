@@ -14,7 +14,6 @@ struct NewQuoteView: View {
     // Popovers
     @State private var showingClientSelection = false
     @State private var showingArticleSelection = false
-
     @State private var showingProjectNameAlert = false
 
     init() {
@@ -22,44 +21,37 @@ struct NewQuoteView: View {
     }
 
     var body: some View {
-        GeometryReader { geometry in
-            let scaleFactor = min(
-                geometry.size.width * 0.8 / 595,
-                geometry.size.height * 0.95 / 842
-            )
+        ZStack {
+            // Fond gris
+            Color.gray.opacity(0.2)
+                .ignoresSafeArea()
 
-            ZStack {
-                Color.gray.opacity(0.2)
-                    .ignoresSafeArea()
+            // Scroll vertical sur l'ensemble du document
+            ScrollView(.vertical) {
+                // Centre horizontalement l'A4
+                HStack {
+                    Spacer(minLength: 0)
 
-                ScrollView {
-                    VStack {
-                        A4SheetView(
-                            companyInfo: companyInfo,
-                            selectedClient: $selectedClient,
-                            quoteArticles: $quoteArticles,
-                            clientProjectAddress: $clientProjectAddress,
-                            projectName: $projectName,
-                            showingClientSelection: $showingClientSelection,
-                            showingArticleSelection: $showingArticleSelection
-                        )
-                        .scaleEffect(scaleFactor)
-                        .frame(width: 595 * scaleFactor,
-                               height: 842 * scaleFactor)
-                    }
-                    .frame(maxWidth: .infinity,
-                           minHeight: geometry.size.height)
+                    A4SheetView(
+                        companyInfo: companyInfo,
+                        selectedClient: $selectedClient,
+                        quoteArticles: $quoteArticles,
+                        clientProjectAddress: $clientProjectAddress,
+                        projectName: $projectName,
+                        showingClientSelection: $showingClientSelection,
+                        showingArticleSelection: $showingArticleSelection
+                    )
+
+                    Spacer(minLength: 0)
                 }
+                .padding(.vertical, 20)
             }
-            // ─────────────────────────────────────────────────────
-            // Popover pour sélectionner un client
-            // ─────────────────────────────────────────────────────
+        }         // Popovers et autres logiques
             .popover(
                 isPresented: $showingClientSelection,
                 attachmentAnchor: .point(.center),
                 arrowEdge: .top
             ) {
-                // On peut mettre un NavigationView si on veut un style "sheet"
                 NavigationView {
                     ClientSelectionView(selectedClient: $selectedClient)
                         .environment(\.managedObjectContext, viewContext)
@@ -73,14 +65,12 @@ struct NewQuoteView: View {
                 }
                 .frame(width: 450, height: 500)
                 .onDisappear {
+                    // Mettre à jour l'adresse du projet si besoin
                     if let client = selectedClient {
                         clientProjectAddress = "\(client.street ?? ""), \(client.postalCode ?? "") \(client.city ?? "")"
                     }
                 }
             }
-            // ─────────────────────────────────────────────────────
-            // Popover pour sélectionner un article
-            // ─────────────────────────────────────────────────────
             .popover(
                 isPresented: $showingArticleSelection,
                 attachmentAnchor: .point(.center),
@@ -95,8 +85,7 @@ struct NewQuoteView: View {
                             unitPrice: article.price
                         )
                         quoteArticles.append(newQA)
-                        // On NE ferme pas le popover,
-                        // permettant de sélectionner plusieurs articles.
+                        // On ne ferme pas le popover
                     }
                     .environment(\.managedObjectContext, viewContext)
                     .toolbar {
@@ -109,9 +98,6 @@ struct NewQuoteView: View {
                 }
                 .frame(width: 500, height: 600)
             }
-            // ─────────────────────────────────────────────────────
-            // Alerte pour demander le nom du projet
-            // ─────────────────────────────────────────────────────
             .alert("Nom du projet", isPresented: $showingProjectNameAlert) {
                 TextField("Nom du projet", text: $projectName)
                 Button("OK") {}
@@ -125,4 +111,3 @@ struct NewQuoteView: View {
             }
         }
     }
-}
