@@ -53,7 +53,8 @@ struct NewQuoteView: View {
                 arrowEdge: .top
             ) {
                 NavigationView {
-                    ClientSelectionView(selectedClient: $selectedClient)
+                    ClientSelectionView(selectedClient: $selectedClient,
+                                        clientProjectAddress: $clientProjectAddress)
                         .environment(\.managedObjectContext, viewContext)
                         .toolbar {
                             ToolbarItem(placement: .cancellationAction) {
@@ -63,7 +64,7 @@ struct NewQuoteView: View {
                             }
                         }
                 }
-                .frame(width: 450, height: 500)
+                .frame(width: 400, height: 500)
                 .onDisappear {
                     // Mettre à jour l'adresse du projet si besoin
                     if let client = selectedClient {
@@ -96,7 +97,7 @@ struct NewQuoteView: View {
                         }
                     }
                 }
-                .frame(width: 500, height: 600)
+                .frame(width: 400, height: 600)
             }
             .alert("Nom du projet", isPresented: $showingProjectNameAlert) {
                 TextField("Nom du projet", text: $projectName)

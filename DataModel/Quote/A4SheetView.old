@@ -1,0 +1,508 @@
+import SwiftUI
+import AppKit
+
+struct A4SheetView: View {
+    let companyInfo: CompanyInfo
+
+    @Binding var selectedClient: Contact?
+    @Binding var quoteArticles: [QuoteArticle]
+    @Binding var clientProjectAddress: String
+    @Binding var projectName: String
+
+    @Binding var showingClientSelection: Bool
+    @Binding var showingArticleSelection: Bool
+
+    /// Indique quelle ligne est en “hover” (affiche les flèches)
+    @State private var arrowIndex: Int? = nil
+    /// Indique quelle ligne est surlignée en jaune après déplacement
+    @State private var highlightIndex: Int? = nil
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            headerSection
+            addressSection
+            projectNameSection
+            articlesSection
+            footerSection
+        }
+        // Taille A4 : 595 de large, min 842 de haut
+        .frame(width: 595)
+        .frame(minHeight: 842, alignment: .top)
+        .background(Color.white)
+        .cornerRadius(4)
+        .shadow(radius: 3)
+        .environment(\.colorScheme, .light)
+        // Anime la disparition du surlignage
+        .animation(.default, value: highlightIndex)
+    }
+
+    // MARK: - Header / Address / ProjectName (inchangés)
+
+    private var headerSection: some View {
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 4) {
+                if let logo = companyInfo.logo {
+                    logo
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 60, height: 60)
+                } else {
+                    Text(companyInfo.companyName)
+                        .font(.title3).bold()
+                }
+                Text(companyInfo.addressLine1)
+                Text(companyInfo.addressLine2)
+                Text(companyInfo.phone)
+                Text(companyInfo.email)
+            }
+            Spacer()
+            ZStack(alignment: .topLeading) {
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(Color(white: 0.95))
+                    .frame(width: 220, height: 100)
+                VStack(alignment: .leading, spacing: 8) {
+                    Button(action: { showingClientSelection = true }) {
+                        RoundedRectangle(cornerRadius: 6)
+                            .strokeBorder(Color.blue, lineWidth: 1)
+                            .overlay(
+                                Text(selectedClient == nil ? "Sélectionner un client" : "Modifier le client")
+                                    .foregroundColor(.blue)
+                                    .padding(.horizontal, 8)
+                            )
+                            .frame(height: 30)
+                    }
+                    if let client = selectedClient {
+                        Text("\(client.firstName ?? "") \(client.lastName ?? "")")
+                            .bold()
+                    } else {
+                        Text("Aucun client sélectionné").foregroundColor(.gray)
+                    }
+                }
+                .padding(8)
+            }
+        }
+        .padding(16)
+    }
+
+    private var addressSection: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Adresse du projet").bold()
+            //RoundedRectangle(cornerRadius: 6)
+                //.fill(Color(white: 0.95))
+                //.overlay(
+                    TextField("Adresse du projet", text: $clientProjectAddress)
+                        .padding(.horizontal, 8)
+                )
+                .frame(height: 36)
+        }
+        .padding(.horizontal, 16)
+    }
+
+    private var projectNameSection: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Nom du projet").bold()
+            RoundedRectangle(cornerRadius: 6)
+                .strokeBorder(Color.gray.opacity(0.5), lineWidth: 1)
+                .overlay(
+                    TextField("Nom du projet", text: $projectName)
+                        .padding(.horizontal, 8)
+                )
+                .frame(height: 36)
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+    }
+
+    // MARK: - Articles
+
+    private var articlesSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            articlesTable
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 16)
+    }
+
+    // MARK: - Tableau (entête + ForEach)
+
+    private var articlesTable: some View {
+        VStack(spacing: 0) {
+            // En-tête
+            HStack(spacing: 0) {
+                Text("N°")
+                    .frame(width: 30, alignment: .leading)
+                Text("Désignation")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Text("Qté")
+                    .frame(width: 40, alignment: .center)
+                Text("PU")
+                    .frame(width: 60, alignment: .trailing)
+                Text("TVA")
+                    .frame(width: 50, alignment: .trailing)
+                Text("Total")
+                    .frame(width: 70, alignment: .trailing)
+            }
+            .frame(maxWidth: .infinity)
+            .padding()
+            .background(Color.gray.opacity(0.2))
+            .cornerRadius(5)
+
+            // Lignes
+            VStack(spacing: 0) {
+                ForEach(quoteArticles.indices, id: \.self) { i in
+                    let numberString = lineNumber(for: i)
+                    DevisLineRowHoverArrows(
+                        index: i,
+                        lineNumber: numberString,
+                        quoteArticle: $quoteArticles[i],
+                        // Survol => arrowIndex
+                        isHovering: (arrowIndex == i),
+                        // Surlignage => highlightIndex
+                        highlight: (highlightIndex == i),
+                        isAutoEntrepreneur: companyInfo.legalForm.lowercased() == "auto-entrepreneur",
+                        // OnHover => arrowIndex
+                        onHoverChanged: { hovering in
+                            if hovering {
+                                arrowIndex = i
+                            } else if arrowIndex == i {
+                                arrowIndex = nil
+                            }
+                        },
+                        // Actions flèches
+                        onMoveUp: { moveUp(i) },
+                        onMoveDown: { moveDown(i) },
+                        // Menu contextuel
+                        onInsertLineAboveCategory: { insertCategoryAbove(i) },
+                        onInsertLineAbovePrestation: { insertPrestationAbove(i) },
+                        onInsertPageBreakBelow: { insertPageBreakBelow(i) },
+                        onDelete: { confirmDelete(index: i) }
+                    )
+                }
+            }
+
+            // Boutons en bas
+            HStack(spacing: 16) {
+                Button("+ Prestation") {
+                    showingArticleSelection = true
+                }
+                .foregroundColor(.blue)
+
+                Button("Catégorie") {
+                    addCategory()
+                }
+                .foregroundColor(.blue)
+
+                Button("Saut de page") {
+                    addPageBreak()
+                }
+                .foregroundColor(.blue)
+            }
+            .padding(.top, 8)
+        }
+    }
+
+    // MARK: - Footer
+
+    private var footerSection: some View {
+        VStack(spacing: 6) {
+            Rectangle()
+                .fill(Color.gray.opacity(0.3))
+                .frame(height: 1)
+                .padding(.horizontal, 16)
+
+            let isAuto = companyInfo.legalForm.lowercased() == "auto-entrepreneur"
+            Text(isAuto ? "TVA non applicable (auto-entrepreneur)" : "TVA 20% (sauf mention légale contraire)")
+                .font(.footnote)
+
+            Text("Forme juridique : \(companyInfo.legalForm)").font(.footnote)
+            Text("SIRET : \(companyInfo.siret) — APE : \(companyInfo.apeCode)").font(.footnote)
+            Text("TVA : \(companyInfo.vatNumber) — IBAN : \(companyInfo.iban)").font(.footnote)
+        }
+        .padding(.bottom, 16)
+    }
+
+    // MARK: - Reorder => highlight + flèches disparaissent après 1s
+
+    private func moveUp(_ index: Int) {
+        guard index > 0 else { return }
+        let newIndex = index - 1
+        quoteArticles.swapAt(index, newIndex)
+
+        // On met highlight = newIndex
+        highlightIndex = newIndex
+        // On force arrowIndex = newIndex pour que les flèches “suivent”
+        arrowIndex = newIndex
+
+        // Après 1s, on enlève surlignage et flèches
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            if highlightIndex == newIndex {
+                highlightIndex = nil
+            }
+            if arrowIndex == newIndex {
+                arrowIndex = nil
+            }
+        }
+    }
+
+    private func moveDown(_ index: Int) {
+        guard index < quoteArticles.count - 1 else { return }
+        let newIndex = index + 1
+        quoteArticles.swapAt(index, newIndex)
+
+        highlightIndex = newIndex
+        arrowIndex = newIndex
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            if highlightIndex == newIndex {
+                highlightIndex = nil
+            }
+            if arrowIndex == newIndex {
+                arrowIndex = nil
+            }
+        }
+    }
+
+    // MARK: - Insert lines
+
+    private func insertCategoryAbove(_ index: Int) {
+        quoteArticles.insert(
+            QuoteArticle(lineType: .category, comment: "Nouvelle catégorie"),
+            at: index
+        )
+    }
+
+    private func insertPrestationAbove(_ index: Int) {
+        let newQA = QuoteArticle(lineType: .article, comment: "Nouvelle prestation")
+        quoteArticles.insert(newQA, at: index)
+    }
+
+    private func insertPageBreakBelow(_ index: Int) {
+        quoteArticles.insert(
+            QuoteArticle(lineType: .pageBreak),
+            at: index + 1
+        )
+    }
+
+    private func addCategory() {
+        quoteArticles.append(
+            QuoteArticle(lineType: .category, comment: "Nouvelle catégorie")
+        )
+    }
+
+    private func addPageBreak() {
+        quoteArticles.append(
+            QuoteArticle(lineType: .pageBreak)
+        )
+    }
+
+    // MARK: - Numérotation
+
+    private func lineNumber(for index: Int) -> String {
+        var categoryCount = 0
+        var noCategoryArticleCount = 0
+        var articleCountInCategory = 0
+
+        for i in 0...index {
+            let line = quoteArticles[i]
+            switch line.lineType {
+            case .category:
+                categoryCount += 1
+                articleCountInCategory = 0
+            case .article:
+                if categoryCount == 0 {
+                    noCategoryArticleCount += 1
+                } else {
+                    articleCountInCategory += 1
+                }
+            case .pageBreak:
+                break
+            }
+        }
+
+        let currentLine = quoteArticles[index]
+        switch currentLine.lineType {
+        case .category:
+            return "\(categoryCount)"
+        case .article:
+            if categoryCount == 0 {
+                return "\(noCategoryArticleCount)"
+            } else {
+                return "\(categoryCount).\(articleCountInCategory)"
+            }
+        case .pageBreak:
+            return ""
+        }
+    }
+
+    // MARK: - Suppression
+
+    private func confirmDelete(index: Int) {
+        let line = quoteArticles[index]
+        let articleName = line.article?.name ?? line.comment ?? "-"
+        let alert = NSAlert()
+        alert.messageText = "Supprimer la ligne ?"
+        alert.informativeText = "Voulez-vous vraiment supprimer la ligne «\(articleName)» ?"
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Supprimer")
+        alert.addButton(withTitle: "Annuler")
+
+        if alert.runModal() == .alertFirstButtonReturn {
+            quoteArticles.remove(at: index)
+        }
+    }
+}
+
+fileprivate struct DevisLineRowHoverArrows: View {
+    let index: Int
+    let lineNumber: String
+
+    @Binding var quoteArticle: QuoteArticle
+
+    // Survol => flèches
+    let isHovering: Bool
+    // Surlignage => fond jaune
+    let highlight: Bool
+
+    let isAutoEntrepreneur: Bool
+
+    // OnHover callback
+    var onHoverChanged: (Bool) -> Void
+
+    // Flèches
+    var onMoveUp: () -> Void
+    var onMoveDown: () -> Void
+
+    // Menu contextuel
+    var onInsertLineAboveCategory: () -> Void
+    var onInsertLineAbovePrestation: () -> Void
+    var onInsertPageBreakBelow: () -> Void
+    var onDelete: () -> Void
+
+    var body: some View {
+        HStack(spacing: 0) {
+            // -- Flèches à gauche si isHovering --
+            if isHovering {
+                // Place les deux flèches dans un HStack pour être sur la même ligne
+                HStack(spacing: 4) {
+                    Button(action: onMoveUp) {
+                        Image(systemName: "chevron.up")
+                    }
+                    Button(action: onMoveDown) {
+                        Image(systemName: "chevron.down")
+                    }
+                }
+                .padding(.leading, 4)
+                // Largeur suffisante pour les deux flèches
+                .frame(width: 50, alignment: .center)
+            }
+
+            // -- Contenu principal de la ligne --
+            rowContent
+        }
+        // Détecte le survol (macOS)
+        .onHover { hovering in
+            onHoverChanged(hovering)
+        }
+        // Menu contextuel (clic droit)
+        .contextMenu {
+            Button("Insérer Catégorie au-dessus") {
+                onInsertLineAboveCategory()
+            }
+            Button("Insérer Prestation au-dessus") {
+                onInsertLineAbovePrestation()
+            }
+            Button("Insérer un saut de page en dessous") {
+                onInsertPageBreakBelow()
+            }
+            Divider()
+            Button("Supprimer la ligne", role: .destructive) {
+                onDelete()
+            }
+        }
+        // Surlignage en jaune si highlight == true
+        .background(highlight ? Color.yellow : Color.clear)
+    }
+
+    // MARK: - rowContent
+
+    @ViewBuilder
+    private var rowContent: some View {
+        switch quoteArticle.lineType {
+        case .category:
+            categoryRow
+        case .pageBreak:
+            pageBreakRow
+        case .article:
+            articleRow
+        }
+    }
+
+    // Catégorie => texte centré, gras
+    private var categoryRow: some View {
+        HStack(spacing: 0) {
+            Text(lineNumber)
+                .frame(width: 30, alignment: .leading)
+
+            TextField("Catégorie", text: Binding(
+                get: { quoteArticle.comment ?? "" },
+                set: { quoteArticle.comment = $0 }
+            ))
+            .textFieldStyle(.roundedBorder)
+            .multilineTextAlignment(.center)
+            .fontWeight(.bold)
+            .frame(maxWidth: .infinity, alignment: .center)
+        }
+    }
+
+    private var pageBreakRow: some View {
+        HStack {
+            Text("---- SAUT DE PAGE ----")
+                .frame(maxWidth: .infinity)
+                .foregroundColor(.red)
+                .multilineTextAlignment(.center)
+        }
+    }
+
+    private var articleRow: some View {
+        HStack(spacing: 0) {
+            Text(lineNumber)
+                .frame(width: 30, alignment: .leading)
+
+            // Désignation
+            TextField("Désignation", text: Binding(
+                get: { quoteArticle.article?.name ?? "" },
+                set: { quoteArticle.article?.name = $0 }
+            ))
+            .textFieldStyle(.roundedBorder)
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            // Quantité
+            TextField("", value: Binding(
+                get: { Double(quoteArticle.quantity) },
+                set: { quoteArticle.quantity = Int16($0) }
+            ), format: .number)
+            .frame(width: 40, alignment: .center)
+            .multilineTextAlignment(.trailing)
+            .textFieldStyle(.roundedBorder)
+
+            // Prix unitaire
+            TextField("", value: Binding(
+                get: { quoteArticle.article?.price ?? 0.0 },
+                set: { quoteArticle.article?.price = $0 }
+            ), format: .number)
+            .frame(width: 60, alignment: .trailing)
+            .multilineTextAlignment(.trailing)
+            .textFieldStyle(.roundedBorder)
+
+            // TVA
+            let tvaRate = isAutoEntrepreneur ? 0.0 : 0.20
+            Text(String(format: "%.0f%%", tvaRate * 100))
+                .frame(width: 50, alignment: .trailing)
+
+            // Total
+            let total = Double(quoteArticle.quantity) * (quoteArticle.article?.price ?? 0.0) * (1 + tvaRate)
+            Text(String(format: "%.2f", total))
+                .frame(width: 70, alignment: .trailing)
+        }
+    }
+}

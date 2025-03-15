@@ -13,6 +13,7 @@ import SwiftUI
 struct CompanyInfo {
     var logo: Image?             // Logo de l'entreprise
     var companyName: String
+    var artisanName: String
     var addressLine1: String     // Ex: "6 chemin du boudard"
     var addressLine2: String     // Ex: "13260 Cassis"
     var phone: String
@@ -34,6 +35,7 @@ extension CompanyInfo {
 
         // Lecture des champs enregistrés par `SettingsView`
         let companyName = defaults.string(forKey: "companyName") ?? ""
+        let artisanName = defaults.string(forKey: "artisanName") ?? ""
         let addr        = defaults.string(forKey: "address") ?? ""
         let postal      = defaults.string(forKey: "postalCode") ?? ""
         let city        = defaults.string(forKey: "city") ?? ""
@@ -66,6 +68,7 @@ extension CompanyInfo {
         return CompanyInfo(
             logo: swiftUIImage,
             companyName: companyName,
+            artisanName: artisanName,
             addressLine1: addressLine1,
             addressLine2: addressLine2,
             phone: phone,

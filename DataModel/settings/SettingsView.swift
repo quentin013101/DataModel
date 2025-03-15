@@ -19,6 +19,7 @@ struct ParametresView: View {
     @State private var iban = ""
     @State private var registrationType = "RCS"
     @State private var siret = ""
+    @State private var artisanName = ""
 
     // MARK: - Constantes et Chemins
     private let logoFilename = "companyLogo.png"
@@ -51,6 +52,7 @@ struct ParametresView: View {
                 Section(header: Text("📌 En-tête").frame(maxWidth: .infinity, alignment: .center)) {
                     VStack(alignment: .leading, spacing: 10) {
                         formRow(label: "Nom de l'entreprise", text: $companyName)
+                        formRow(label: "Nom Prénom", text: $artisanName)
                         formRow(label: "Adresse", text: $address)
                         formRow(label: "Code Postal", text: $postalCode)
                         formRow(label: "Ville", text: $city)
@@ -186,6 +188,7 @@ struct ParametresView: View {
     private func loadSettings() {
         let defaults = UserDefaults.standard
         companyName = defaults.string(forKey: "companyName") ?? ""
+        artisanName = defaults.string(forKey: "artisanName") ?? ""
         address = defaults.string(forKey: "address") ?? ""
         postalCode = defaults.string(forKey: "postalCode") ?? ""
         city = defaults.string(forKey: "city") ?? ""
@@ -212,6 +215,7 @@ struct ParametresView: View {
     private func saveSettings() {
         let defaults = UserDefaults.standard
         defaults.set(companyName, forKey: "companyName")
+        defaults.set(artisanName, forKey: "artisanName")
         defaults.set(address, forKey: "address")
         defaults.set(postalCode, forKey: "postalCode")
         defaults.set(city, forKey: "city")

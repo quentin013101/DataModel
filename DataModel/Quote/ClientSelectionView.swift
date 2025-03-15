@@ -6,6 +6,7 @@ struct ClientSelectionView: View {
     @Environment(\.dismiss) private var dismiss
 
     @Binding var selectedClient: Contact?
+    @Binding var clientProjectAddress: String
     @State private var searchText = ""
     @State private var showingAddClient = false
 
@@ -33,6 +34,10 @@ struct ClientSelectionView: View {
                 List(filteredClients, id: \.self) { client in
                     Button(action: {
                         selectedClient = client
+                        let streetLine = client.street ?? ""
+                        let postalCityLine = "\(client.postalCode ?? "") \(client.city ?? "")"
+                        clientProjectAddress = streetLine + "\n" + postalCityLine
+
                         dismiss()
                     }) {
                         VStack(alignment: .leading) {

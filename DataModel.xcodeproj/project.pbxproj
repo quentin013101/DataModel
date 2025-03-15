@@ -29,9 +29,35 @@
 		920ABC942D70D6A000D760E4 /* DataModelUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DataModelUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		924A97182D8096C3004CE3E7 /* Exceptions for "DataModel" folder in "DataModel" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Quote/A4SheetView.old,
+				Quote/TableColumns.old,
+			);
+			target = 920ABC732D70D69F00D760E4 /* DataModel */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+		924A97192D8096C3004CE3E7 /* Exceptions for "DataModel" folder in "Compile Sources" phase from "DataModel" target */ = {
+			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
+			buildPhase = 920ABC702D70D69F00D760E4 /* Sources */;
+			membershipExceptions = (
+				Quote/A4SheetView.old,
+				Quote/TableColumns.old,
+			);
+		};
+/* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		920ABC762D70D69F00D760E4 /* DataModel */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				924A97182D8096C3004CE3E7 /* Exceptions for "DataModel" folder in "DataModel" target */,
+				924A97192D8096C3004CE3E7 /* Exceptions for "DataModel" folder in "Compile Sources" phase from "DataModel" target */,
+			);
 			path = DataModel;
 			sourceTree = "<group>";
 		};
