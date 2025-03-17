@@ -68,7 +68,7 @@ struct NewQuoteView: View {
                 .onDisappear {
                     // Mettre à jour l'adresse du projet si besoin
                     if let client = selectedClient {
-                        clientProjectAddress = "\(client.street ?? ""), \(client.postalCode ?? "") \(client.city ?? "")"
+                        clientProjectAddress = "\(client.street ?? "")\n\(client.postalCode ?? "") \(client.city ?? "")"
                     }
                 }
             }

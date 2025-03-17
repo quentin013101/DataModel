@@ -17,8 +17,7 @@ struct A4SheetView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            headerSection
-            topClientAddressSection
+            headerSection            // On retire topClientAddressSection ici
             projectNameField
             articlesSection
 
@@ -29,23 +28,23 @@ struct A4SheetView: View {
                 .padding(.top, 16)
 
             Spacer()
-
             footerSection
         }
         .font(.system(size: 9))
         .frame(width: 595)
         .frame(minHeight: 842, alignment: .top)
         .background(Color.white)
-        .cornerRadius(4)
+        //.cornerRadius(4)
         .shadow(radius: 3)
         .environment(\.colorScheme, .light)
         .animation(.default, value: highlightIndex)
     }
 
-    // MARK: - 1) Header
+    // MARK: - 1) Header (avec rectangle gris à droite)
 
     private var headerSection: some View {
-        HStack(alignment: .top) {
+        HStack(alignment: .top, spacing: 0) {
+            // -- Colonne de gauche : logo + infos entreprise
             VStack(alignment: .leading, spacing: 4) {
                 if let logo = companyInfo.logo {
                     logo
@@ -54,102 +53,114 @@ struct A4SheetView: View {
                         .frame(width: 100, height: 100)
                 } else {
                     Text(companyInfo.companyName)
-                        .font(.title2).bold()
+                        .font(.title2)
+                        .bold()
                 }
                 Text(companyInfo.addressLine1)
                 Text(companyInfo.addressLine2)
                 Text(companyInfo.phone)
                 Text(companyInfo.email)
             }
-        }
-        .padding(16)
-    }
+            .padding(.leading, 16)    // Marge à gauche
 
-    // MARK: - 2) Encart client + Adresse projet
+            Spacer(minLength: 180)      // Pousse la colonne de droite le plus à droite possible
 
-    private var topClientAddressSection: some View {
-        HStack(alignment: .top) {
-            // -- Rectangle de gauche : Adresse du projet --
-            ZStack {
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(Color(white: 0.95))
+            // -- Colonne de droite : Devis, date, validité + rectangle client
+            VStack(alignment: .trailing, spacing: 4) {
+                // Devis, date, validité
+                Text("Devis N° DEV-\(Calendar.current.component(.year, from: Date()))-001")
+                    .font(.headline)
+                    .padding(.top, 32)
 
-                // TextEditor multi-lignes, centré verticalement
-                VStack {
-                    Spacer()
-                   TextEditor(text: $clientProjectAddress)
-                        .multilineTextAlignment(.center)
-                        .background(Color.clear) // pas de fond blanc
-                        .scrollContentBackground(.hidden) // iOS 16 / macOS 13+
-                        .frame(height: 36)
-                        .padding(.horizontal, 8)
+                Text("En date du \(formattedToday)")
+                    .font(.subheadline)
 
-                    
-                    Spacer()
-                }
-            }
-            .frame(width: 220, height: 60)
-            .overlay(
-                // Petit label au-dessus
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Adresse du projet")
-                        .font(.system(size: 9))
-                        .foregroundColor(.black)
-                        .padding(.bottom, 2)
-                }
-                .frame(width: 220, alignment: .topLeading)
-                .offset(y: -16) // Décale le titre juste au-dessus du rectangle
-                , alignment: .top
-            )
+                Text("Valable 3 mois")
+                    .font(.subheadline)
+                    .padding(.bottom, 16) // <— Espace supplémentaire sous "Valable 3 mois"
 
-            Spacer()
+                // Rectangle gris pour le client
+                // Dans votre rectangle gris :
+                ZStack(alignment: .topLeading) {
+                    // Fond gris
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color(white: 0.95))
 
-            // -- Rectangle de droite : Client --
-            ZStack {
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(Color(white: 0.95))
-
-                // On centre verticalement le contenu
-                VStack {
-                    Spacer()
                     if let client = selectedClient {
-                        let civ = client.civility ?? "M."
-                        let nomMaj = (client.lastName ?? "").uppercased()
-                        let prenom = client.firstName ?? ""
-                        Text("\(civ) \(nomMaj) \(prenom)")
-                            .bold()
-                            .onTapGesture {
-                                showingClientSelection = true
-                            }
+                        // — Client sélectionné : nom + adresse en haut à gauche
+                        VStack(alignment: .leading, spacing: 6) {
+                            let civ = client.civility ?? "M."
+                            let nomMaj = (client.lastName ?? "").uppercased()
+                            let prenom = client.firstName ?? ""
+
+                            Text("\(civ) \(nomMaj) \(prenom)")
+                                .font(.headline)
+                                .onTapGesture {
+                                    showingClientSelection = true
+                                }
+
+                            // Adresse : TextEditor sans scroll
+                            TextEditor(text: $clientProjectAddress)
+                                .font(.system(size: 12))
+                                .foregroundColor(.black)
+                                .scrollDisabled(true)            // Pas de défilement
+                                .scrollContentBackground(.hidden)
+                                .frame(minHeight: 24)
+                        }
+                        .padding(8)
+                        // Force le placement en haut à gauche
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
                     } else {
-                        Button(action: { showingClientSelection = true }) {
-                            Text("Aucun client sélectionné")
-                                .foregroundColor(.gray)
+                        // — Aucun client => bouton centré
+                        HStack {
+                            Spacer()
+                            VStack {
+                                Spacer()
+                                Button(action: {
+                                    showingClientSelection = true
+                                }) {
+                                    Text("Sélectionner un client")
+                                        .font(.headline)
+                                        .foregroundColor(.gray)
+                                }
+                                Spacer()
+                            }
+                            Spacer()
                         }
                     }
-                    Spacer()
                 }
+                // Taille fixe de 260×80 pour le ZStack
+                .frame(width: 260, height: 80)
+                // Coupe tout ce qui dépasserait la zone
+                .clipped()
             }
-            .frame(width: 220, height: 60)
+            .padding(.trailing, 16)     // Aucune marge supplémentaire à droite
         }
-        .padding(.horizontal, 16)
+        .padding(.top, 16)            // Marge en haut
+    }
+    
+    private var formattedToday: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        return formatter.string(from: Date())
     }
 
-    // MARK: - 3) Nom du projet
+    // MARK: - 2) Nom du projet
 
     private var projectNameField: some View {
         TextField("Nom du projet", text: $projectName)
             .font(.system(size: 13).bold().italic())
             .padding(.horizontal, 16)
             .padding(.vertical, 4)
+            .padding(.top, 16)
     }
 
-    // MARK: - 4) Articles
+    // MARK: - 3) Articles
 
     private var articlesSection: some View {
         let tableWidth: CGFloat = 560
-        // Colonnes : 0, 30, 310, 360, 430, 480, 560
-        let columnLines: [CGFloat] = [0, 30, 310, 360, 430, 480, 560]
+        let columnLines: [CGFloat] = [0, 40, 310, 360, 430, 480, 560]
 
         return VStack(spacing: 0) {
             VStack(spacing: 0) {
@@ -345,7 +356,7 @@ struct A4SheetView: View {
         return sum
     }
 
-    // MARK: - Numérotation
+    // MARK: - Logique articles
 
     private func lineNumber(for index: Int) -> String {
         var categoryCount = 0
@@ -382,7 +393,7 @@ struct A4SheetView: View {
         }
     }
 
-    // MARK: - Déplacements de ligne
+    // MARK: - Move up/down
 
     private func moveUp(_ index: Int) {
         guard index > 0 else { return }
@@ -555,7 +566,7 @@ fileprivate struct DevisLineRowHoverArrows: View {
             .textFieldStyle(.roundedBorder)
             .multilineTextAlignment(.center)
             .fontWeight(.bold)
-            .frame(width: 530, alignment: .center)
+            .frame(width: 520, alignment: .center)
             .frame(height: 22)
         }
     }
@@ -565,8 +576,7 @@ fileprivate struct DevisLineRowHoverArrows: View {
             Text("---- SAUT DE PAGE ----")
                 .foregroundColor(.red)
                 .multilineTextAlignment(.center)
-                // Largeur totale = 560, on retire 30 pour la colonne "N°" = 530
-                .frame(width: 530, alignment: .center)
+                .frame(width: 530 - 30, alignment: .center)
         }
         .frame(height: 22)
     }
@@ -584,7 +594,7 @@ fileprivate struct DevisLineRowHoverArrows: View {
             ))
             .textFieldStyle(.plain)
             .padding(.leading, 4)
-            .frame(width: 280, alignment: .leading)
+            .frame(width: 250, alignment: .leading)
 
             // Qté + unité
             HStack(spacing: 2) {
@@ -600,7 +610,7 @@ fileprivate struct DevisLineRowHoverArrows: View {
             .padding(.trailing, 4)
             .frame(width: 50, alignment: .trailing)
 
-            // PU € (marge à droite)
+            // PU €
             TextField("", value: Binding(
                 get: { quoteArticle.article?.price ?? 0.0 },
                 set: { quoteArticle.article?.price = $0 }

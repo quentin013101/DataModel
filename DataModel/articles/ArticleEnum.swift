@@ -6,6 +6,7 @@ enum ArticleType: String, CaseIterable {
 
 enum ArticleUnit: String, CaseIterable {
     case hr = "hr"
+    case fr = "Forfait"
     case u = "u"
     case m = "m"
     case m2 = "m²"
