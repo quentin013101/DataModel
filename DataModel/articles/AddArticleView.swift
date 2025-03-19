@@ -13,7 +13,7 @@ struct AddArticleView: View {
     @State private var marginPercentage: Double = 0.0
 
     private let types = ["Matériaux", "Main d'œuvre", "Ouvrage"]
-    private let units = ["hr", "u", "m", "m²", "m3", "ml", "l", "kg"]
+    private let units = ["hr", "u", "m", "m²", "m3", "ml", "l", "kg", "Forfait"]
 
     var body: some View {
         VStack(spacing: 20) {

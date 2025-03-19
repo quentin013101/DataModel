@@ -16,6 +16,7 @@ struct QuoteArticle: Identifiable, Equatable {
 
     /// Quantité (pertinent seulement si c'est un article)
     var quantity: Int16
+    var unit: String
 
     /// Prix unitaire (on peut choisir de le stocker ici, ou se baser sur article?.price)
     var unitPrice: Double
@@ -32,7 +33,8 @@ struct QuoteArticle: Identifiable, Equatable {
         quantity: Int16 = 1,
         unitPrice: Double = 0.0,
         lineType: QuoteLineType = .article,
-        comment: String? = nil
+        comment: String? = nil,
+        unit: String = "u"
     ) {
         self.id = id
         self.article = article
@@ -40,6 +42,7 @@ struct QuoteArticle: Identifiable, Equatable {
         self.unitPrice = unitPrice
         self.lineType = lineType
         self.comment = comment
+        self.unit = unit
     }
 
     // Pour comparer deux QuoteArticle (nécessaire si on veut qu'ils soient Equatable)

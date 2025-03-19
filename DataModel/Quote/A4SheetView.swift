@@ -14,10 +14,40 @@ struct A4SheetView: View {
 
     @State private var arrowIndex: Int? = nil
     @State private var highlightIndex: Int? = nil
+    
+    private func computeCategoryTotal(startIndex: Int) -> Double {
+        let isAuto = companyInfo.legalForm.lowercased().contains("auto")
+        var sum: Double = 0
+
+        // Trouver l’index de la prochaine catégorie
+        let nextCatIndex = findNextCategoryIndex(after: startIndex)
+
+        // Parcourir les lignes [startIndex+1 ..< nextCatIndex]
+        for i in (startIndex+1) ..< nextCatIndex {
+            let line = quoteArticles[i]
+            if line.lineType == .article {
+                let price = line.article?.price ?? 0.0
+                let tvaRate = isAuto ? 0.0 : 0.20
+                sum += Double(line.quantity) * price * (1 + tvaRate)
+            }
+        }
+        return sum
+    }
+
+    private func findNextCategoryIndex(after idx: Int) -> Int {
+        var i = idx + 1
+        while i < quoteArticles.count {
+            if quoteArticles[i].lineType == .category {
+                return i
+            }
+            i += 1
+        }
+        return quoteArticles.count
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            headerSection            // On retire topClientAddressSection ici
+            headerSection
             projectNameField
             articlesSection
 
@@ -34,17 +64,15 @@ struct A4SheetView: View {
         .frame(width: 595)
         .frame(minHeight: 842, alignment: .top)
         .background(Color.white)
-        //.cornerRadius(4)
-        .shadow(radius: 3)
+        // .shadow(radius: 3) // retirez l'ombre si vous le souhaitez
         .environment(\.colorScheme, .light)
         .animation(.default, value: highlightIndex)
     }
 
-    // MARK: - 1) Header (avec rectangle gris à droite)
+    // MARK: - 1) Header
 
     private var headerSection: some View {
         HStack(alignment: .top, spacing: 0) {
-            // -- Colonne de gauche : logo + infos entreprise
             VStack(alignment: .leading, spacing: 4) {
                 if let logo = companyInfo.logo {
                     logo
@@ -61,13 +89,11 @@ struct A4SheetView: View {
                 Text(companyInfo.phone)
                 Text(companyInfo.email)
             }
-            .padding(.leading, 16)    // Marge à gauche
+            .padding(.leading, 16)
 
-            Spacer(minLength: 180)      // Pousse la colonne de droite le plus à droite possible
+            Spacer(minLength: 180)
 
-            // -- Colonne de droite : Devis, date, validité + rectangle client
             VStack(alignment: .trailing, spacing: 4) {
-                // Devis, date, validité
                 Text("Devis N° DEV-\(Calendar.current.component(.year, from: Date()))-001")
                     .font(.headline)
                     .padding(.top, 32)
@@ -77,17 +103,13 @@ struct A4SheetView: View {
 
                 Text("Valable 3 mois")
                     .font(.subheadline)
-                    .padding(.bottom, 16) // <— Espace supplémentaire sous "Valable 3 mois"
+                    .padding(.bottom, 16)
 
-                // Rectangle gris pour le client
-                // Dans votre rectangle gris :
                 ZStack(alignment: .topLeading) {
-                    // Fond gris
                     RoundedRectangle(cornerRadius: 8)
                         .fill(Color(white: 0.95))
 
                     if let client = selectedClient {
-                        // — Client sélectionné : nom + adresse en haut à gauche
                         VStack(alignment: .leading, spacing: 6) {
                             let civ = client.civility ?? "M."
                             let nomMaj = (client.lastName ?? "").uppercased()
@@ -99,20 +121,17 @@ struct A4SheetView: View {
                                     showingClientSelection = true
                                 }
 
-                            // Adresse : TextEditor sans scroll
                             TextEditor(text: $clientProjectAddress)
                                 .font(.system(size: 12))
                                 .foregroundColor(.black)
-                                .scrollDisabled(true)            // Pas de défilement
+                                .scrollDisabled(true)
                                 .scrollContentBackground(.hidden)
                                 .frame(minHeight: 24)
                         }
                         .padding(8)
-                        // Force le placement en haut à gauche
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
                     } else {
-                        // — Aucun client => bouton centré
                         HStack {
                             Spacer()
                             VStack {
@@ -130,16 +149,14 @@ struct A4SheetView: View {
                         }
                     }
                 }
-                // Taille fixe de 260×80 pour le ZStack
                 .frame(width: 260, height: 80)
-                // Coupe tout ce qui dépasserait la zone
                 .clipped()
             }
-            .padding(.trailing, 16)     // Aucune marge supplémentaire à droite
+            .padding(.trailing, 16)
         }
-        .padding(.top, 16)            // Marge en haut
+        .padding(.top, 16)
     }
-    
+
     private var formattedToday: String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
@@ -160,6 +177,7 @@ struct A4SheetView: View {
 
     private var articlesSection: some View {
         let tableWidth: CGFloat = 560
+        // Lignes verticales à [0, 40, 310, 360, 430, 480, 560]
         let columnLines: [CGFloat] = [0, 40, 310, 360, 430, 480, 560]
 
         return VStack(spacing: 0) {
@@ -185,11 +203,12 @@ struct A4SheetView: View {
                             onInsertLineAboveCategory: { insertCategoryAbove(i) },
                             onInsertLineAbovePrestation: { insertPrestationAbove(i) },
                             onInsertPageBreakBelow: { insertPageBreakBelow(i) },
-                            onDelete: { confirmDelete(index: i) }
+                            onDelete: { confirmDelete(index: i) },
+                            // Remplacez l'ancien code par ceci :
+                            computeCategoryTotal: { _ in computeCategoryTotal(startIndex: i) }
                         )
                     }
 
-                    // Ligne horizontale pour "fermer" le tableau
                     Rectangle()
                         .frame(height: 1)
                         .foregroundColor(.gray.opacity(0.5))
@@ -225,19 +244,20 @@ struct A4SheetView: View {
         .padding(.top, 8)
     }
 
+    /// N°(40) / Désignation(270) / Qté(50) / PU(70) / TVA(50) / Total(80)
     private func headerRow(width: CGFloat) -> some View {
         HStack(spacing: 0) {
             Text("N°")
-                .frame(width: 30, alignment: .center)
+                .frame(width: 40, alignment: .center)
             Text("Désignation")
-                .frame(width: 280, alignment: .leading)
-                .padding(.leading, 4)
+                .frame(width: 270, alignment: .center)
             Text("Qté")
+                // On laisse 50 (pas besoin de marge ?)
                 .frame(width: 50, alignment: .center)
             Text("PU €")
-                .frame(width: 70, alignment: .trailing)
+                .frame(width: 70, alignment: .center)
             Text("TVA")
-                .frame(width: 50, alignment: .trailing)
+                .frame(width: 50, alignment: .center)
             Text("Total €")
                 .frame(width: 80, alignment: .center)
         }
@@ -253,9 +273,9 @@ struct A4SheetView: View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Paiement en espèces, par chèque ou par virement bancaire.")
-                Text("Le montant peut être révisé en fonction du temps réel passé sur le chantier et de l’ajustement des fournitures et/ou de leurs prix.")
+                Text("Le montant peut être révisé ...")
                 if companyInfo.legalForm.lowercased().contains("auto") {
-                    Text("TVA non applicable, article 293 B du Code Général des Impôts.")
+                    Text("TVA non applicable, article 293 B ...")
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -278,7 +298,7 @@ struct A4SheetView: View {
                 .cornerRadius(4)
 
                 Button("Remise") {
-                    // action
+                    // ...
                 }
             }
             .frame(width: 280, alignment: .trailing)
@@ -298,7 +318,7 @@ struct A4SheetView: View {
                     RoundedRectangle(cornerRadius: 4)
                         .fill(Color(white: 0.9))
                         .frame(width: 240, height: 90)
-                    Text("Mention manuscrite et datée :\n« Devis reçu avant l’exécution des travaux. Bon pour travaux. »")
+                    Text("Mention manuscrite et datée : ...")
                         .font(.system(size: 7))
                         .foregroundColor(.gray)
                         .padding(4)
@@ -329,7 +349,7 @@ struct A4SheetView: View {
                 .padding(.horizontal, 16)
 
             let isAuto = companyInfo.legalForm.lowercased().contains("auto")
-            Text(isAuto ? "TVA non applicable (auto-entrepreneur)" : "TVA 20% (sauf mention légale contraire)")
+            Text(isAuto ? "TVA non applicable (auto-entrepreneur)" : "TVA 20% ...")
                 .font(.footnote)
 
             Text("Forme juridique : \(companyInfo.legalForm)")
@@ -490,12 +510,14 @@ struct VerticalLinesOverlay: View {
 fileprivate struct DevisLineRowHoverArrows: View {
     let index: Int
     let lineNumber: String
+    private let allUnits = ["hr", "u", "m", "m²", "m3", "ml", "l", "kg", "forfait"]
 
     @Binding var quoteArticle: QuoteArticle
 
     let isHovering: Bool
     let highlight: Bool
     let isAutoEntrepreneur: Bool
+    
 
     var onHoverChanged: (Bool) -> Void
     var onMoveUp: () -> Void
@@ -504,6 +526,9 @@ fileprivate struct DevisLineRowHoverArrows: View {
     var onInsertLineAbovePrestation: () -> Void
     var onInsertPageBreakBelow: () -> Void
     var onDelete: () -> Void
+
+    // Optionnel, si vous gérez les catégories
+    var computeCategoryTotal: (Int) -> Double
 
     var body: some View {
         ZStack {
@@ -526,14 +551,17 @@ fileprivate struct DevisLineRowHoverArrows: View {
             onHoverChanged(hovering)
         }
         .contextMenu {
-            Button("Insérer Catégorie au-dessus") {
-                onInsertLineAboveCategory()
-            }
-            Button("Insérer Prestation au-dessus") {
-                onInsertLineAbovePrestation()
-            }
-            Button("Insérer un saut de page en dessous") {
-                onInsertPageBreakBelow()
+            Button("Insérer Catégorie au-dessus") { onInsertLineAboveCategory() }
+            Button("Insérer Prestation au-dessus") { onInsertLineAbovePrestation() }
+            // ...
+            Divider()
+            // Sous-menu ou boutons pour l’unité
+            Menu("Changer l’unité") {
+                ForEach(["hr", "u", "m", "m²", "m3", "ml", "l", "kg", "Forfait"], id: \.self) { possibleUnit in
+                    Button(possibleUnit) {
+                        quoteArticle.unit = possibleUnit
+                    }
+                }
             }
             Divider()
             Button("Supprimer la ligne", role: .destructive) {
@@ -555,20 +583,31 @@ fileprivate struct DevisLineRowHoverArrows: View {
         }
     }
 
+    // Catégorie : fusion Désignation(270)+Qté(50)+PU(70)+TVA(50) => 440
+    // Dernière col = 80 => total 560
     private var categoryRow: some View {
-        HStack(spacing: 0) {
+        let catTotal = computeCategoryTotal(index)
+        return HStack(spacing: 0) {
+            // N° (40)
             Text(lineNumber)
-                .frame(width: 30, alignment: .center)
+                .frame(width: 40, alignment: .center)
+
+            // Fusion 440
             TextField("Catégorie", text: Binding(
                 get: { quoteArticle.comment ?? "" },
                 set: { quoteArticle.comment = $0 }
             ))
             .textFieldStyle(.roundedBorder)
-            .multilineTextAlignment(.center)
-            .fontWeight(.bold)
-            .frame(width: 520, alignment: .center)
-            .frame(height: 22)
+            .font(.system(size: 11, weight: .bold))
+            .frame(width: 440, alignment: .leading)
+
+            // Total (80)
+            Text(String(format: "%.2f €", catTotal))
+                .font(.system(size: 11, weight: .bold))
+                .frame(width: 80, alignment: .trailing)
         }
+        .frame(height: 22)
+        .background(Color(white: 0.95))
     }
 
     private var pageBreakRow: some View {
@@ -576,61 +615,67 @@ fileprivate struct DevisLineRowHoverArrows: View {
             Text("---- SAUT DE PAGE ----")
                 .foregroundColor(.red)
                 .multilineTextAlignment(.center)
-                .frame(width: 530 - 30, alignment: .center)
+                .frame(width: 560, alignment: .center)
         }
         .frame(height: 22)
     }
 
+    // Article : N°(40), Désig(270), Qté(50), PU(70), TVA(50), Total(80)
     private var articleRow: some View {
-        HStack(spacing: 0) {
+        let tvaRate = isAutoEntrepreneur ? 0.0 : 0.20
+        let total = Double(quoteArticle.quantity) * (quoteArticle.article?.price ?? 0.0) * (1 + tvaRate)
+
+        return HStack(spacing: 0) {
             // N°
             Text(lineNumber)
-                .frame(width: 30, alignment: .leading)
+                .frame(width: 40, alignment: .center)
 
-            // Désignation (petite marge à gauche)
+            // Désignation
             TextField("Désignation", text: Binding(
                 get: { quoteArticle.article?.name ?? "" },
                 set: { quoteArticle.article?.name = $0 }
             ))
             .textFieldStyle(.plain)
+            .frame(width: 266, alignment: .leading)
             .padding(.leading, 4)
-            .frame(width: 250, alignment: .leading)
 
-            // Qté + unité
+            // Qté => marge
             HStack(spacing: 2) {
+                // Champ quantité
                 TextField("", value: Binding(
                     get: { Double(quoteArticle.quantity) },
                     set: { quoteArticle.quantity = Int16($0) }
                 ), format: .number)
                 .textFieldStyle(.plain)
-                .multilineTextAlignment(.trailing)
-                Text(quoteArticle.article?.unit ?? "")
+                .multilineTextAlignment(.center)
+
+                // Affichage de l'unité en texte simple
+                Text(quoteArticle.unit ?? "")
                     .foregroundColor(.gray)
             }
+            // On veut un petit espace avant la ligne => on réduit la frame à 46, et on .padding(.trailing, 4)
+            .frame(width: 46, alignment: .trailing)
             .padding(.trailing, 4)
-            .frame(width: 50, alignment: .trailing)
 
-            // PU €
+            // PU => 70 => on fait 66 + 4
             TextField("", value: Binding(
                 get: { quoteArticle.article?.price ?? 0.0 },
                 set: { quoteArticle.article?.price = $0 }
             ), format: .number.precision(.fractionLength(2)))
             .textFieldStyle(.plain)
             .multilineTextAlignment(.trailing)
+            .frame(width: 66, alignment: .trailing)
             .padding(.trailing, 4)
-            .frame(width: 70, alignment: .trailing)
 
-            // TVA
-            let tvaRate = isAutoEntrepreneur ? 0.0 : 0.20
+            // TVA => 50 => 46 + 4
             Text(String(format: "%.0f%%", tvaRate * 100))
+                .frame(width: 46, alignment: .trailing)
                 .padding(.trailing, 4)
-                .frame(width: 50, alignment: .trailing)
 
-            // Total €
-            let total = Double(quoteArticle.quantity) * (quoteArticle.article?.price ?? 0.0) * (1 + tvaRate)
+            // Total => 80 => 76 + 4
             Text(String(format: "%.2f €", total))
+                .frame(width: 76, alignment: .trailing)
                 .padding(.trailing, 4)
-                .frame(width: 80, alignment: .trailing)
         }
         .font(.system(size: 9))
         .frame(height: 22)
