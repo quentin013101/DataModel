@@ -14,6 +14,36 @@ struct A4SheetView: View {
 
     @State private var arrowIndex: Int? = nil
     @State private var highlightIndex: Int? = nil
+    
+    private func computeCategoryTotal(startIndex: Int) -> Double {
+        let isAuto = companyInfo.legalForm.lowercased().contains("auto")
+        var sum: Double = 0
+
+        // Trouver l’index de la prochaine catégorie
+        let nextCatIndex = findNextCategoryIndex(after: startIndex)
+
+        // Parcourir les lignes [startIndex+1 ..< nextCatIndex]
+        for i in (startIndex+1) ..< nextCatIndex {
+            let line = quoteArticles[i]
+            if line.lineType == .article {
+                let price = line.article?.price ?? 0.0
+                let tvaRate = isAuto ? 0.0 : 0.20
+                sum += Double(line.quantity) * price * (1 + tvaRate)
+            }
+        }
+        return sum
+    }
+
+    private func findNextCategoryIndex(after idx: Int) -> Int {
+        var i = idx + 1
+        while i < quoteArticles.count {
+            if quoteArticles[i].lineType == .category {
+                return i
+            }
+            i += 1
+        }
+        return quoteArticles.count
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -27,14 +57,14 @@ struct A4SheetView: View {
             clientProSignatureSection
                 .padding(.top, 16)
 
-            Spacer()
+            Spacer(minLength: 0)
+                .layoutPriority(-1)
+
             footerSection
         }
         .font(.system(size: 9))
-        .frame(width: 595)
-        .frame(minHeight: 842, alignment: .top)
+        .frame(width: 595, alignment: .top)
         .background(Color.white)
-        // .shadow(radius: 3) // retirez l'ombre si vous le souhaitez
         .environment(\.colorScheme, .light)
         .animation(.default, value: highlightIndex)
     }
@@ -174,8 +204,8 @@ struct A4SheetView: View {
                             onInsertLineAbovePrestation: { insertPrestationAbove(i) },
                             onInsertPageBreakBelow: { insertPageBreakBelow(i) },
                             onDelete: { confirmDelete(index: i) },
-                            // si vous utilisez computeCategoryTotal, mettez-le ici
-                            computeCategoryTotal: { _ in 0.0 }
+                            // Remplacez l'ancien code par ceci :
+                            computeCategoryTotal: { _ in computeCategoryTotal(startIndex: i) }
                         )
                     }
 
@@ -243,9 +273,9 @@ struct A4SheetView: View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Paiement en espèces, par chèque ou par virement bancaire.")
-                Text("Le montant peut être révisé ...")
+                Text("Le montant peut être révisé en fonction du temps réel passé sur le chantier et de l’ajustement des fournitures et/ou de leurs prix.")
                 if companyInfo.legalForm.lowercased().contains("auto") {
-                    Text("TVA non applicable, article 293 B ...")
+                    Text("TVA non applicable, article 293 B du Code Général des Impôts.")
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -271,7 +301,7 @@ struct A4SheetView: View {
                     // ...
                 }
             }
-            .frame(width: 280, alignment: .trailing)
+            .frame(width:200, alignment: .trailing)
         }
         .padding(.horizontal, 16)
         .padding(.top, 8)
@@ -480,12 +510,14 @@ struct VerticalLinesOverlay: View {
 fileprivate struct DevisLineRowHoverArrows: View {
     let index: Int
     let lineNumber: String
+    private let allUnits = ["hr", "u", "m", "m²", "m3", "ml", "l", "kg", "forfait"]
 
     @Binding var quoteArticle: QuoteArticle
 
     let isHovering: Bool
     let highlight: Bool
     let isAutoEntrepreneur: Bool
+    
 
     var onHoverChanged: (Bool) -> Void
     var onMoveUp: () -> Void
@@ -519,14 +551,17 @@ fileprivate struct DevisLineRowHoverArrows: View {
             onHoverChanged(hovering)
         }
         .contextMenu {
-            Button("Insérer Catégorie au-dessus") {
-                onInsertLineAboveCategory()
-            }
-            Button("Insérer Prestation au-dessus") {
-                onInsertLineAbovePrestation()
-            }
-            Button("Insérer un saut de page en dessous") {
-                onInsertPageBreakBelow()
+            Button("Insérer Catégorie au-dessus") { onInsertLineAboveCategory() }
+            Button("Insérer Prestation au-dessus") { onInsertLineAbovePrestation() }
+            // ...
+            Divider()
+            // Sous-menu ou boutons pour l’unité
+            Menu("Changer l’unité") {
+                ForEach(["hr", "u", "m", "m²", "m3", "ml", "l", "kg", "Forfait"], id: \.self) { possibleUnit in
+                    Button(possibleUnit) {
+                        quoteArticle.unit = possibleUnit
+                    }
+                }
             }
             Divider()
             Button("Supprimer la ligne", role: .destructive) {
@@ -563,10 +598,12 @@ fileprivate struct DevisLineRowHoverArrows: View {
                 set: { quoteArticle.comment = $0 }
             ))
             .textFieldStyle(.roundedBorder)
+            .font(.system(size: 11, weight: .bold))
             .frame(width: 440, alignment: .leading)
 
             // Total (80)
             Text(String(format: "%.2f €", catTotal))
+                .font(.system(size: 11, weight: .bold))
                 .frame(width: 80, alignment: .trailing)
         }
         .frame(height: 22)
@@ -603,7 +640,8 @@ fileprivate struct DevisLineRowHoverArrows: View {
             .padding(.leading, 4)
 
             // Qté => marge
-            HStack(spacing: 2) {
+            HStack(spacing: 1) {
+                // Champ quantité
                 TextField("", value: Binding(
                     get: { Double(quoteArticle.quantity) },
                     set: { quoteArticle.quantity = Int16($0) }
@@ -611,7 +649,10 @@ fileprivate struct DevisLineRowHoverArrows: View {
                 .textFieldStyle(.plain)
                 .multilineTextAlignment(.center)
 
-                Text(quoteArticle.article?.unit ?? "")
+                // Affichage de l'unité en texte simple
+                Text(quoteArticle.unit ?? "")
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
                     .foregroundColor(.gray)
             }
             // On veut un petit espace avant la ligne => on réduit la frame à 46, et on .padding(.trailing, 4)

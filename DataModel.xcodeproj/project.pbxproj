@@ -34,6 +34,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Quote/A4SheetView.old,
+				Quote/NewQuoteView.old,
 				Quote/TableColumns.old,
 			);
 			target = 920ABC732D70D69F00D760E4 /* DataModel */;
@@ -46,6 +47,7 @@
 			buildPhase = 920ABC702D70D69F00D760E4 /* Sources */;
 			membershipExceptions = (
 				Quote/A4SheetView.old,
+				Quote/NewQuoteView.old,
 				Quote/TableColumns.old,
 			);
 		};

@@ -14,7 +14,7 @@ struct EditArticleView: View {
     @State private var marginPercentage: Double
 
     private let types = ["Matériaux", "Main d'œuvre", "Ouvrage"]
-    private let units = ["hr", "u", "m", "m²", "m3", "ml", "l", "kg"]
+    private let units = ["hr", "u", "m", "m²", "m3", "ml", "l", "kg", "Forfait"]
 
     init(article: Article) {
         self.article = article

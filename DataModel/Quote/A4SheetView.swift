@@ -11,6 +11,11 @@ struct A4SheetView: View {
 
     @Binding var showingClientSelection: Bool
     @Binding var showingArticleSelection: Bool
+    @State private var showingDiscountPopup = false
+    @State private var discountValue: Double = 0
+    @State private var discountIsPercentage: Bool = true
+    @State private var commissionValue: Double = 0
+    @State private var commissionIsPercentage: Bool = true
 
     @State private var arrowIndex: Int? = nil
     @State private var highlightIndex: Int? = nil
@@ -57,16 +62,24 @@ struct A4SheetView: View {
             clientProSignatureSection
                 .padding(.top, 16)
 
-            Spacer()
+            Spacer(minLength: 0)
+                .layoutPriority(-1)
+
             footerSection
         }
         .font(.system(size: 9))
-        .frame(width: 595)
-        .frame(minHeight: 842, alignment: .top)
+        .frame(width: 595, alignment: .top)
         .background(Color.white)
-        // .shadow(radius: 3) // retirez l'ombre si vous le souhaitez
         .environment(\.colorScheme, .light)
         .animation(.default, value: highlightIndex)
+        .sheet(isPresented: $showingDiscountPopup) {
+            DiscountCommissionPopup(
+                quoteArticles: $quoteArticles,
+                netTotal: computeTotal(beforeDiscount: true),
+                applyDiscount: applyDiscount,
+                applyCommission: applyCommission
+            )
+        }
     }
 
     // MARK: - 1) Header
@@ -273,9 +286,9 @@ struct A4SheetView: View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Paiement en espèces, par chèque ou par virement bancaire.")
-                Text("Le montant peut être révisé ...")
+                Text("Le montant peut être révisé en fonction du temps réel passé sur le chantier et de l’ajustement des fournitures et/ou de leurs prix.")
                 if companyInfo.legalForm.lowercased().contains("auto") {
-                    Text("TVA non applicable, article 293 B ...")
+                    Text("TVA non applicable, article 293 B du Code Général des Impôts.")
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -298,14 +311,71 @@ struct A4SheetView: View {
                 .cornerRadius(4)
 
                 Button("Remise") {
-                    // ...
-                }
-            }
-            .frame(width: 280, alignment: .trailing)
+                    showingDiscountPopup = true
+                }            }
+            .frame(width: 150, alignment: .trailing)
         }
         .padding(.horizontal, 16)
         .padding(.top, 8)
     }
+    // MARK: - Calcul du total avec remise et commission
+
+        private func computeTotal(beforeDiscount: Bool = false) -> Double {
+            var sum: Double = 0
+            let isAuto = companyInfo.legalForm.lowercased().contains("auto")
+
+            for qa in quoteArticles {
+                guard qa.lineType == .article else { continue }
+                let price = qa.article?.price ?? 0.0
+                let tvaRate = isAuto ? 0.0 : 0.20
+                sum += Double(qa.quantity) * price * (1 + tvaRate)
+            }
+
+            if beforeDiscount { return sum }
+
+            // Appliquer la remise
+            if discountValue > 0 {
+                let discountAmount = discountIsPercentage ? sum * (discountValue / 100) : discountValue
+                sum -= discountAmount
+            }
+
+            return sum
+        }
+
+    private func applyDiscount(value: Double, isPercentage: Bool) {
+        let discountAmount = isPercentage ? computeTotal(beforeDiscount: true) * (value / 100) : value
+
+        let discountLine = QuoteArticle(
+            id: UUID(),
+            lineType: .remise,
+            comment: "Remise",
+            quantity: 1, // Fixe à 1 pour éviter le nil
+            unitPrice: -discountAmount, // Valeur négative pour la remise
+            article: nil
+        )
+
+        quoteArticles.append(discountLine)
+    }
+        private func applyCommission(value: Double, isPercentage: Bool) {
+            commissionValue = value
+            commissionIsPercentage = isPercentage
+
+            let totalBeforeCommission = computeTotal(beforeDiscount: true)
+            let commissionAmount = isPercentage ? totalBeforeCommission * (value / 100) : value
+
+            let totalArticles = quoteArticles.filter { $0.lineType == .article }.count
+            let adjustmentPerArticle = commissionAmount / Double(totalArticles)
+
+            for index in quoteArticles.indices {
+                if quoteArticles[index].lineType == .article {
+                    let newUnitPrice = (quoteArticles[index].unitPrice ?? 0) + adjustmentPerArticle
+                    let newTotal = newUnitPrice * Double(quoteArticles[index].quantity ?? 1)
+
+                    quoteArticles[index].unitPrice = newUnitPrice
+                    quoteArticles[index].total = newTotal
+                }
+            }
+        }
 
     // MARK: - 6) Signatures client / pro
 
@@ -640,7 +710,7 @@ fileprivate struct DevisLineRowHoverArrows: View {
             .padding(.leading, 4)
 
             // Qté => marge
-            HStack(spacing: 2) {
+            HStack(spacing: 1) {
                 // Champ quantité
                 TextField("", value: Binding(
                     get: { Double(quoteArticle.quantity) },
@@ -651,6 +721,8 @@ fileprivate struct DevisLineRowHoverArrows: View {
 
                 // Affichage de l'unité en texte simple
                 Text(quoteArticle.unit ?? "")
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
                     .foregroundColor(.gray)
             }
             // On veut un petit espace avant la ligne => on réduit la frame à 46, et on .padding(.trailing, 4)

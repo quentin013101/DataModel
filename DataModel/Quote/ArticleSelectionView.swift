@@ -44,6 +44,7 @@ struct ArticleSelectionView: View {
                             Text(article.name ?? "-")
                             Spacer()
                             Text(String(format: "%.2f €", article.price))
+                            Text(article.unit ?? "-")
                         }
                         .padding()
                     }

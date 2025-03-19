@@ -5,6 +5,7 @@ enum QuoteLineType: String, Codable {
     case article
     case category
     case pageBreak
+    case remise  // Ajout de la ligne remise
 }
 
 /// Représente une ligne dans le devis
@@ -16,7 +17,7 @@ struct QuoteArticle: Identifiable, Equatable {
 
     /// Quantité (pertinent seulement si c'est un article)
     var quantity: Int16
-    var unit: String
+    var unit: String?
 
     /// Prix unitaire (on peut choisir de le stocker ici, ou se baser sur article?.price)
     var unitPrice: Double
@@ -34,7 +35,7 @@ struct QuoteArticle: Identifiable, Equatable {
         unitPrice: Double = 0.0,
         lineType: QuoteLineType = .article,
         comment: String? = nil,
-        unit: String = "u"
+        unit: String? = nil
     ) {
         self.id = id
         self.article = article
@@ -42,7 +43,11 @@ struct QuoteArticle: Identifiable, Equatable {
         self.unitPrice = unitPrice
         self.lineType = lineType
         self.comment = comment
-        self.unit = unit
+        if let art = article {
+            self.unit = art.unit   // ex: "m²"
+        } else {
+            self.unit = nil
+        }
     }
 
     // Pour comparer deux QuoteArticle (nécessaire si on veut qu'ils soient Equatable)
@@ -52,6 +57,8 @@ struct QuoteArticle: Identifiable, Equatable {
         && lhs.unitPrice == rhs.unitPrice
         && lhs.lineType == rhs.lineType
         && lhs.comment == rhs.comment
+        && lhs.unit == rhs.unit
         // Comparez aussi l'article si nécessaire (ex: en comparant l'objectID si c'est CoreData)
     }
 }
+
