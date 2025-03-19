@@ -5,7 +5,6 @@ enum QuoteLineType: String, Codable {
     case article
     case category
     case pageBreak
-    case remise  // Ajout de la ligne remise
 }
 
 /// Représente une ligne dans le devis
