@@ -18,8 +18,8 @@ struct RemisePopupView: View {
             Form {
                 Section(header: Text("Type de remise")) {
                     Picker("Type", selection: $isPercentage) {
-                        Text("Pourcentage").tag(true)
                         Text("Montant (€)").tag(false)
+                        Text("Pourcentage").tag(true)
                     }
                     .pickerStyle(SegmentedPickerStyle())
                 }

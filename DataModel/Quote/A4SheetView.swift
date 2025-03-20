@@ -622,10 +622,12 @@ fileprivate struct DevisLineRowHoverArrows: View {
                     set: { quoteArticle.comment = $0 }
                 ))
                 .textFieldStyle(.plain)
+                .font(.system(size: 11, weight: .bold))
                 .frame(width: 266, alignment: .leading)
                 .padding(.leading, 4)
                 Spacer()
                 Text(String(format: "%.2f €", quoteArticle.unitPrice))
+                    .font(.system(size: 11, weight: .bold))
                     .frame(width: 76, alignment: .trailing)
                     .padding(.trailing, 4)
             }
