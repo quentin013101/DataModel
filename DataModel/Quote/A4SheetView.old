@@ -301,7 +301,7 @@ struct A4SheetView: View {
                     // ...
                 }
             }
-            .frame(width:200, alignment: .trailing)
+            .frame(width: 200, alignment: .trailing)
         }
         .padding(.horizontal, 16)
         .padding(.top, 8)

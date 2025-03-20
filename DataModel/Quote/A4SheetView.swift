@@ -11,9 +11,11 @@ struct A4SheetView: View {
 
     @Binding var showingClientSelection: Bool
     @Binding var showingArticleSelection: Bool
+    @State private var isShowingRemisePopup = false
 
     @State private var arrowIndex: Int? = nil
     @State private var highlightIndex: Int? = nil
+    
     
     private func computeCategoryTotal(startIndex: Int) -> Double {
         let isAuto = companyInfo.legalForm.lowercased().contains("auto")
@@ -281,12 +283,12 @@ struct A4SheetView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
 
             VStack(alignment: .trailing, spacing: 8) {
-                let total = computeTotal()
+                let net = recalcNetTotal()
                 HStack(spacing: 0) {
                     Spacer()
                     Text("Net à payer :")
                         .bold()
-                    Text(String(format: "%.2f €", total))
+                    Text(String(format: "%.2f €", net))
                         .bold()
                         .frame(width: 80, alignment: .trailing)
                 }
@@ -298,15 +300,45 @@ struct A4SheetView: View {
                 .cornerRadius(4)
 
                 Button("Remise") {
-                    // ...
+                    isShowingRemisePopup = true
+                }
+                .sheet(isPresented: $isShowingRemisePopup) {
+                    RemisePopupView(isPresented: $isShowingRemisePopup, totalBeforeDiscount: computeTotalBeforeDiscount()) { discount in
+                        addDiscountLine(discountAmount: discount)
+                    }
                 }
             }
+            
             .frame(width: 200, alignment: .trailing)
         }
         .padding(.horizontal, 16)
         .padding(.top, 8)
     }
 
+    // Exemple de structure de ligne de devis – adaptez-la à votre modèle si besoin
+    struct InvoiceLine: Identifiable {
+        let id = UUID()
+        var lineNumber: String? // Pour la ligne de remise, ce sera nil
+        var designation: String
+        var quantity: String?   // Vide pour la remise
+        var unitPrice: String?  // Vide pour la remise
+        var total: Double
+    }
+
+    func computeTotalBeforeDiscount() -> Double {
+        return computeTotal()
+    }
+    func addDiscountLine(discountAmount: Double) {
+        let discountLine = QuoteArticle(discountAmount: discountAmount)
+        quoteArticles.append(discountLine)
+    }
+
+    func recalcNetTotal() -> Double {
+        let articlesTotal = computeTotal()  // total des articles
+        let discountTotal = quoteArticles.filter { $0.lineType == .remise }
+                                         .reduce(0) { $0 + $1.total }
+        return articlesTotal + discountTotal
+    }
     // MARK: - 6) Signatures client / pro
 
     private var clientProSignatureSection: some View {
@@ -318,7 +350,7 @@ struct A4SheetView: View {
                     RoundedRectangle(cornerRadius: 4)
                         .fill(Color(white: 0.9))
                         .frame(width: 240, height: 90)
-                    Text("Mention manuscrite et datée : ...")
+                    Text("Mention manuscrite et datée :\n« Devis reçu avant l’exécution des travaux. Bon pour travaux. ")
                         .font(.system(size: 7))
                         .foregroundColor(.gray)
                         .padding(4)
@@ -396,6 +428,9 @@ struct A4SheetView: View {
                 }
             case .pageBreak:
                 break
+            case .remise:
+                // Vous pouvez décider de ne rien faire ou de gérer différemment
+                break
             }
         }
         let currentLine = quoteArticles[index]
@@ -408,7 +443,7 @@ struct A4SheetView: View {
             } else {
                 return "\(categoryCount).\(articleCountInCategory)"
             }
-        case .pageBreak:
+        case .pageBreak, .remise:
             return ""
         }
     }
@@ -517,7 +552,6 @@ fileprivate struct DevisLineRowHoverArrows: View {
     let isHovering: Bool
     let highlight: Bool
     let isAutoEntrepreneur: Bool
-    
 
     var onHoverChanged: (Bool) -> Void
     var onMoveUp: () -> Void
@@ -532,8 +566,7 @@ fileprivate struct DevisLineRowHoverArrows: View {
 
     var body: some View {
         ZStack {
-            rowContent
-
+            rowContent  // Utilisation de la propriété calculée
             if isHovering {
                 HStack(spacing: 4) {
                     Button(action: onMoveUp) {
@@ -553,9 +586,7 @@ fileprivate struct DevisLineRowHoverArrows: View {
         .contextMenu {
             Button("Insérer Catégorie au-dessus") { onInsertLineAboveCategory() }
             Button("Insérer Prestation au-dessus") { onInsertLineAbovePrestation() }
-            // ...
             Divider()
-            // Sous-menu ou boutons pour l’unité
             Menu("Changer l’unité") {
                 ForEach(["hr", "u", "m", "m²", "m3", "ml", "l", "kg", "Forfait"], id: \.self) { possibleUnit in
                     Button(possibleUnit) {
@@ -571,6 +602,7 @@ fileprivate struct DevisLineRowHoverArrows: View {
         .background(highlight ? Color.yellow : Color.clear)
     }
 
+    // Propriété calculée pour choisir la vue à afficher en fonction du type de ligne
     @ViewBuilder
     private var rowContent: some View {
         switch quoteArticle.lineType {
@@ -580,19 +612,32 @@ fileprivate struct DevisLineRowHoverArrows: View {
             pageBreakRow
         case .article:
             articleRow
+        case .remise:
+            // Affichage pour la remise
+            HStack(spacing: 0) {
+                Text("") // Pas de numéro
+                    .frame(width: 40, alignment: .center)
+                TextField("Remise", text: Binding(
+                    get: { quoteArticle.comment ?? "" },
+                    set: { quoteArticle.comment = $0 }
+                ))
+                .textFieldStyle(.plain)
+                .frame(width: 266, alignment: .leading)
+                .padding(.leading, 4)
+                Spacer()
+                Text(String(format: "%.2f €", quoteArticle.unitPrice))
+                    .frame(width: 76, alignment: .trailing)
+                    .padding(.trailing, 4)
+            }
         }
     }
 
-    // Catégorie : fusion Désignation(270)+Qté(50)+PU(70)+TVA(50) => 440
-    // Dernière col = 80 => total 560
+    // Définition des autres vues (categoryRow, pageBreakRow, articleRow) reste inchangée…
     private var categoryRow: some View {
         let catTotal = computeCategoryTotal(index)
         return HStack(spacing: 0) {
-            // N° (40)
             Text(lineNumber)
                 .frame(width: 40, alignment: .center)
-
-            // Fusion 440
             TextField("Catégorie", text: Binding(
                 get: { quoteArticle.comment ?? "" },
                 set: { quoteArticle.comment = $0 }
@@ -600,8 +645,6 @@ fileprivate struct DevisLineRowHoverArrows: View {
             .textFieldStyle(.roundedBorder)
             .font(.system(size: 11, weight: .bold))
             .frame(width: 440, alignment: .leading)
-
-            // Total (80)
             Text(String(format: "%.2f €", catTotal))
                 .font(.system(size: 11, weight: .bold))
                 .frame(width: 80, alignment: .trailing)
@@ -620,17 +663,12 @@ fileprivate struct DevisLineRowHoverArrows: View {
         .frame(height: 22)
     }
 
-    // Article : N°(40), Désig(270), Qté(50), PU(70), TVA(50), Total(80)
     private var articleRow: some View {
         let tvaRate = isAutoEntrepreneur ? 0.0 : 0.20
         let total = Double(quoteArticle.quantity) * (quoteArticle.article?.price ?? 0.0) * (1 + tvaRate)
-
         return HStack(spacing: 0) {
-            // N°
             Text(lineNumber)
                 .frame(width: 40, alignment: .center)
-
-            // Désignation
             TextField("Désignation", text: Binding(
                 get: { quoteArticle.article?.name ?? "" },
                 set: { quoteArticle.article?.name = $0 }
@@ -638,28 +676,20 @@ fileprivate struct DevisLineRowHoverArrows: View {
             .textFieldStyle(.plain)
             .frame(width: 266, alignment: .leading)
             .padding(.leading, 4)
-
-            // Qté => marge
             HStack(spacing: 1) {
-                // Champ quantité
                 TextField("", value: Binding(
                     get: { Double(quoteArticle.quantity) },
                     set: { quoteArticle.quantity = Int16($0) }
                 ), format: .number)
                 .textFieldStyle(.plain)
                 .multilineTextAlignment(.center)
-
-                // Affichage de l'unité en texte simple
                 Text(quoteArticle.unit ?? "")
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                     .foregroundColor(.gray)
             }
-            // On veut un petit espace avant la ligne => on réduit la frame à 46, et on .padding(.trailing, 4)
             .frame(width: 46, alignment: .trailing)
             .padding(.trailing, 4)
-
-            // PU => 70 => on fait 66 + 4
             TextField("", value: Binding(
                 get: { quoteArticle.article?.price ?? 0.0 },
                 set: { quoteArticle.article?.price = $0 }
@@ -668,13 +698,9 @@ fileprivate struct DevisLineRowHoverArrows: View {
             .multilineTextAlignment(.trailing)
             .frame(width: 66, alignment: .trailing)
             .padding(.trailing, 4)
-
-            // TVA => 50 => 46 + 4
             Text(String(format: "%.0f%%", tvaRate * 100))
                 .frame(width: 46, alignment: .trailing)
                 .padding(.trailing, 4)
-
-            // Total => 80 => 76 + 4
             Text(String(format: "%.2f €", total))
                 .frame(width: 76, alignment: .trailing)
                 .padding(.trailing, 4)
