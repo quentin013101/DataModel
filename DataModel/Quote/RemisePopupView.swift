@@ -2,58 +2,104 @@ import SwiftUI
 
 struct RemisePopupView: View {
     @Binding var isPresented: Bool
-    @State private var isPercentage: Bool = true
-    @State private var inputValue: String = ""
     var totalBeforeDiscount: Double
-    var onApply: (Double) -> Void  // Retourne le montant calculé de la remise en €
+    var onApply: (Double, Bool) -> Void
+
+    @State private var inputValue: String = ""
+    @State private var remiseMode: RemiseType = .montant
+    @State private var equivalentValue: String = "" // ✅ Indicateur dynamique
+
+    enum RemiseType {
+        case montant, pourcentage
+    }
 
     var body: some View {
         VStack {
-            // Titre de la pop-up
-            Text("Ajouter une remise")
-                .font(.title)
-                .padding(.top)
+            Text("Type de remise") // ✅ Centré et en gras au-dessus du Picker
+                .font(.headline)
+                .bold()
+                .multilineTextAlignment(.center)
+                .padding(.bottom, 4)
 
-            // Formulaire de saisie
-            Form {
-                Section(header: Text("Type de remise")) {
-                    Picker("Type", selection: $isPercentage) {
-                        Text("Montant (€)").tag(false)
-                        Text("Pourcentage").tag(true)
-                    }
-                    .pickerStyle(SegmentedPickerStyle())
-                }
-                Section(header: Text("Valeur")) {
-                    TextField("Entrer la valeur", text: $inputValue)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .frame(width: 200)
+            Picker("", selection: $remiseMode) { // ✅ Supprime "Type de remise" du Picker
+                Text("Montant (€)").tag(RemiseType.montant)
+                Text("Pourcentage (%)").tag(RemiseType.pourcentage)
+            }
+            .pickerStyle(SegmentedPickerStyle())
+            .padding()
+            .onChange(of: remiseMode) { _ in
+                if !equivalentValue.isEmpty { // ✅ Si une équivalence existe, on la met dans le TextField
+                    inputValue = equivalentValue.replacingOccurrences(of: "≈ ", with: "")
+                        .replacingOccurrences(of: " €", with: "")
+                        .replacingOccurrences(of: "% du total", with: "")
                 }
             }
-            .padding()
 
-            // Boutons en bas
+            TextField("Entrer la remise", text: $inputValue)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .font(.system(size: 16)) // ✅ Augmente la taille du texte saisi
+                .frame(height: 40) // ✅ Augmente la hauteur du champ
+                .padding()
+                .onChange(of: inputValue) { newValue in
+                    updateEquivalentValue() // ✅ Met à jour l’indicateur dynamiquement
+                }
+                .onSubmit { applyRemise() } // ✅ Validation avec la touche Entrée
+
+            // ✅ Affichage de l'équivalence sous le champ de saisie (EN GRAS + PLUS GRAND)
+            if !equivalentValue.isEmpty {
+                Text(equivalentValue)
+                    .font(.system(size: 14)) // ✅ Augmente la taille
+                    .bold() // ✅ Met en gras
+                    .foregroundColor(.gray)
+                    .padding(.bottom, 4)
+            }
+
             HStack {
                 Button("Annuler") {
                     isPresented = false
                 }
+                .foregroundColor(.red)
+
                 Spacer()
+
                 Button("Valider") {
-                    guard let value = Double(inputValue.replacingOccurrences(of: ",", with: ".")) else {
-                        // gestion d'erreur
-                        return
-                    }
-                    let discountAmount: Double
-                    if isPercentage {
-                        discountAmount = totalBeforeDiscount * (value / 100.0)
-                    } else {
-                        discountAmount = value
-                    }
-                    onApply(discountAmount)
-                    isPresented = false
+                    applyRemise() // ✅ Action commune au bouton et à la touche Entrée
                 }
+                .foregroundColor(.blue)
             }
-            .padding([.leading, .trailing, .bottom])
+            .padding()
         }
-        .frame(width: 400, height: 300)
+        .padding()
+        .frame(width: 300)
+        .cornerRadius(10)
+        .shadow(radius: 10)
+    }
+
+    // ✅ Fonction qui met à jour l'équivalence affichée
+    private func updateEquivalentValue() {
+        guard let value = Double(inputValue.replacingOccurrences(of: ",", with: ".")), totalBeforeDiscount > 0 else {
+            equivalentValue = ""
+            return
+        }
+
+        if remiseMode == .montant {
+            let percentEquivalent = ceil((value / totalBeforeDiscount) * 100) // ✅ Arrondi au supérieur
+            equivalentValue = "≈ \(Int(percentEquivalent))% du total" // ✅ Supprime la décimale
+        } else {
+            let euroEquivalent = (value / 100) * totalBeforeDiscount
+            equivalentValue = String(format: "≈ %.2f €", euroEquivalent)
+        }
+    }
+
+    // ✅ Fonction qui applique la remise au moment de la validation
+    private func applyRemise() {
+        guard let value = Double(inputValue.replacingOccurrences(of: ",", with: ".")) else {
+            return // Gestion d'erreur si la conversion échoue
+        }
+
+        let isPercentage = remiseMode == .pourcentage
+        onApply(value, isPercentage)
+
+        isPresented = false
     }
 }

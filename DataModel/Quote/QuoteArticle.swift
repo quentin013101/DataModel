@@ -5,8 +5,6 @@ enum QuoteLineType: String, Codable {
     case article
     case category
     case pageBreak
-    case remise  // Ajout du cas remise
-
 }
 
 /// Représente une ligne dans le devis
@@ -71,8 +69,6 @@ extension QuoteArticle {
         switch lineType {
         case .article:
             return Double(quantity) * unitPrice
-        case .remise:
-            return unitPrice  // On suppose que unitPrice est déjà négatif
         default:
             return 0.0
         }
@@ -80,11 +76,9 @@ extension QuoteArticle {
     
     /// Initialiseur spécialisé pour une ligne de remise.
     /// Le montant fourni (discountAmount) est converti en valeur négative.
-    init(discountAmount: Double) {
-        // On appelle l'initialiseur de base avec le type .remise et un commentaire
-        self.init(lineType: .remise, comment: "Remise")
-        // Force la valeur à être négative, quelle que soit la valeur entrée
-        self.unitPrice = -abs(discountAmount)
-        self.quantity = 1
-    }
+//    init(discountAmount: Double) { ❌ À SUPPRIMER
+//        self.init(lineType: .remise, comment: "Remise")
+//        self.unitPrice = -abs(discountAmount)
+//        self.quantity = 1
+//    }
 }

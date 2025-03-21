@@ -4,8 +4,8 @@ struct NewQuoteView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.dismiss) var dismiss
 
-    private let companyInfo: CompanyInfo
-
+   // private let companyInfo: CompanyInfo
+    @State private var companyInfo: CompanyInfo = CompanyInfo.loadFromUserDefaults()
     @State private var selectedClient: Contact?
     @State private var quoteArticles: [QuoteArticle] = []
     @State private var clientProjectAddress = ""
@@ -16,6 +16,8 @@ struct NewQuoteView: View {
     @State private var showingProjectNameAlert = false
 
     @State private var documentHeight: CGFloat = 842
+
+    
 
     init() {
         self.companyInfo = CompanyInfo.loadFromUserDefaults()
@@ -32,11 +34,11 @@ struct NewQuoteView: View {
                 ScrollView(.vertical) {
                     VStack {
                         A4SheetView(
-                            companyInfo: companyInfo,
                             selectedClient: $selectedClient,
                             quoteArticles: $quoteArticles,
                             clientProjectAddress: $clientProjectAddress,
                             projectName: $projectName,
+                            companyInfo: $companyInfo,
                             showingClientSelection: $showingClientSelection,
                             showingArticleSelection: $showingArticleSelection
                         )
