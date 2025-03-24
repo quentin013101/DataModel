@@ -106,6 +106,7 @@ struct ParametresView: View {
 
             // Boutons d'action centrés
             HStack {
+                
                 Button("Fermer") { dismiss() }
                     .padding()
                     .background(Color.gray.opacity(0.2))
@@ -113,10 +114,12 @@ struct ParametresView: View {
 
                 Spacer()
 
-                Button("Enregistrer") { saveSettings() }
+                Button(action : { saveSettings() })
+                { Text("Enregistrer") }
                     .padding()
                     .background(Color.blue)
-                    .foregroundColor(.white)
+                    //.foregroundColor(.white)
+                    .buttonStyle(.borderedProminent)
                     .cornerRadius(8)
             }
             .frame(maxWidth: .infinity)
