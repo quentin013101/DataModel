@@ -1,5 +1,7 @@
 import SwiftUI
 import AppKit
+import PDFKit
+
 
 struct A4SheetView: View {
     // let companyInfo: CompanyInfo
@@ -23,6 +25,8 @@ struct A4SheetView: View {
     @State private var remiseLabel: String = "Remise"
     @State private var devisNumber: String = ""
     
+
+
     
     private func computeCategoryTotal(startIndex: Int) -> Double {
         let isAuto = companyInfo.legalForm.lowercased().contains("auto")
@@ -71,6 +75,7 @@ struct A4SheetView: View {
         .font(.system(size: 9))
         .frame(width: 595, alignment: .top)
         .background(Color.white)
+       // .background(Color.red) // temporaire
         .environment(\.colorScheme, .light)
         .animation(.default, value: highlightIndex)
     }
@@ -80,8 +85,8 @@ struct A4SheetView: View {
     private var headerSection: some View {
         HStack(alignment: .top, spacing: 0) {
             VStack(alignment: .leading, spacing: 4) {
-                if let logo = companyInfo.logo {
-                    logo
+                if let nsImage = companyInfo.logo?.asNSImage() {
+                    Image(nsImage: nsImage)
                         .resizable()
                         .scaledToFit()
                         .frame(width: 100, height: 100)
@@ -112,9 +117,8 @@ struct A4SheetView: View {
                     .padding(.bottom, 16)
                 
                 ZStack(alignment: .topLeading) {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color(white: 0.95))
-                    
+                    PDFBoxView(backgroundColor: .lightGray, cornerRadius: 8)
+                        .frame(width: 260, height: 80)
                     if let client = selectedClient {
                         VStack(alignment: .leading, spacing: 6) {
                             let civ = client.civility ?? "M."
@@ -215,16 +219,16 @@ struct A4SheetView: View {
     
     private var articlesSection: some View {
         let tableWidth: CGFloat = 560
-        // Lignes verticales à [0, 40, 310, 360, 430, 480, 560]
         let columnLines: [CGFloat] = [0, 40, 310, 360, 430, 480, 560]
-        
+
         return VStack(spacing: 0) {
             VStack(spacing: 0) {
                 headerRow(width: tableWidth)
-                
+
                 if !quoteArticles.isEmpty {
                     ForEach(quoteArticles.indices, id: \.self) { i in
                         let numberString = lineNumber(for: i)
+
                         DevisLineRowHoverArrows(
                             index: i,
                             lineNumber: numberString,
@@ -242,68 +246,91 @@ struct A4SheetView: View {
                             onInsertLineAbovePrestation: { insertPrestationAbove(i) },
                             onInsertPageBreakBelow: { insertPageBreakBelow(i) },
                             onDelete: { confirmDelete(index: i) },
-                            // Remplacez l'ancien code par ceci :
                             computeCategoryTotal: { _ in computeCategoryTotal(startIndex: i) }
                         )
                     }
-                    
-                    Rectangle()
+
+                    PDFBoxView(backgroundColor: NSColor.gray.withAlphaComponent(0.2))
                         .frame(height: 1)
-                        .foregroundColor(.gray.opacity(0.5))
-                        .padding(.top, 2)
                 }
             }
-            .frame(width: tableWidth, alignment: .topLeading)
-            .background(
-                VerticalLinesOverlay(positions: columnLines)
-            )
-            
-            // Boutons sous le tableau
+            .frame(width: tableWidth)
+            //.background(Color.blue.opacity(0.3) .frame(width: tableWidth)) // ✅ bleu clair autour du tableau (articles seulement)
+//            .background(
+//                VerticalLinesOverlay(positions: columnLines))
+
+            // Boutons
             HStack(spacing: 16) {
                 Button("+ Prestation") {
                     showingArticleSelection = true
                 }
-                .foregroundColor(.blue)
-                
                 Button("Catégorie") {
                     addCategory()
                 }
-                .foregroundColor(.blue)
-                
                 Button("Saut de page") {
                     addPageBreak()
                 }
-                .foregroundColor(.blue)
             }
             .padding(.top, 8)
         }
-        .frame(width: tableWidth)
         .padding(.horizontal, 16)
         .padding(.top, 8)
     }
     
     /// N°(40) / Désignation(270) / Qté(50) / PU(70) / TVA(50) / Total(80)
     private func headerRow(width: CGFloat) -> some View {
-        HStack(spacing: 0) {
-            Text("N°")
-                .frame(width: 40, alignment: .center)
-            Text("Désignation")
-                .frame(width: 270, alignment: .center)
-            Text("Qté")
-            // On laisse 50 (pas besoin de marge ?)
-                .frame(width: 50, alignment: .center)
-            Text("PU €")
-                .frame(width: 70, alignment: .center)
-            Text("TVA")
-                .frame(width: 50, alignment: .center)
-            Text("Total €")
-                .frame(width: 80, alignment: .center)
+        ZStack {
+            PDFBoxView(backgroundColor: NSColor(calibratedRed: 106/255, green: 133/255, blue: 187/255, alpha: 1))
+                .frame(width: width, height: 22)
+
+            HStack(spacing: 0) {
+
+                Text("N°")
+                    .frame(width: 40, alignment: .center)
+
+                PDFBoxView(backgroundColor: .white)
+                    .frame(width: 1, height: 22)
+
+                Text("Désignation")
+                    .frame(width: 270, alignment: .center)
+
+                PDFBoxView(backgroundColor: .white)
+                    .frame(width: 1, height: 22)
+
+                Text("Qté")
+                    .frame(width: 50, alignment: .center)
+
+                PDFBoxView(backgroundColor: .white)
+                    .frame(width: 1, height: 22)
+
+                Text("PU €")
+                    .frame(width: 70, alignment: .center)
+
+                PDFBoxView(backgroundColor: .white)
+                    .frame(width: 1, height: 22)
+
+                Text("TVA")
+                    .frame(width: 50, alignment: .center)
+
+                PDFBoxView(backgroundColor: .white)
+                    .frame(width: 1, height: 22)
+
+                Text("Total €")
+                    .frame(width: 80, alignment: .center)
+
+            }
+            .font(.system(size: 12, weight: .bold))
+            .foregroundColor(.white)
+          //  .background(Color.green) // autour du .frame(width: 560)
+            .frame(width: width) // <== AJOUTE CETTE LIGNE
+
+
         }
-        .font(.system(size: 12, weight: .bold))
-        .foregroundColor(.white)
-        .padding(.vertical, 6)
-        .background(Color(red: 106/255, green: 133/255, blue: 187/255))
+        .frame(width: width, height: 22)
+
     }
+    
+    
     
     // MARK: - 5) Signature / net à payer
     
@@ -353,8 +380,9 @@ struct A4SheetView: View {
                 .font(.system(size: 12))
                 .padding(.vertical, 6)
                 .padding(.horizontal, 8)
-                .background(Color.blue)
-                .foregroundColor(.white)
+                .background(
+                    PDFBoxView(backgroundColor: NSColor(calibratedRed: 106/255, green: 133/255, blue: 187/255, alpha: 1))
+                )                .foregroundColor(.white)
                 .cornerRadius(4)
 
                 Button("Remise") {
@@ -616,6 +644,7 @@ struct A4SheetView: View {
     
     // MARK: - DevisLineRowHoverArrows (ligne d'article + flèches)
     
+    
     fileprivate struct DevisLineRowHoverArrows: View {
         let index: Int
         let lineNumber: String
@@ -725,47 +754,119 @@ struct A4SheetView: View {
         private var articleRow: some View {
             let tvaRate = isAutoEntrepreneur ? 0.0 : 0.20
             let total = Double(quoteArticle.quantity) * (quoteArticle.article?.price ?? 0.0) * (1 + tvaRate)
-            return HStack(spacing: 0) {
-                Text(lineNumber)
-                    .frame(width: 40, alignment: .center)
-                TextField("Désignation", text: Binding(
-                    get: { quoteArticle.article?.name ?? "" },
-                    set: { quoteArticle.article?.name = $0 }
-                ))
-                .textFieldStyle(.plain)
-                .frame(width: 266, alignment: .leading)
-                .padding(.leading, 4)
-                HStack(spacing: 1) {
-                    TextField("", value: Binding(
-                        get: { Double(quoteArticle.quantity) },
-                        set: { quoteArticle.quantity = Int16($0) }
-                    ), format: .number)
+
+            return ZStack {
+                Color.clear.frame(height: 22)
+
+                HStack(spacing: 0) {
+                    PDFBoxView(backgroundColor: NSColor.gray.withAlphaComponent(0.2))
+                        .frame(width: 1, height: 22)
+
+                    Text(lineNumber)
+                        .frame(width: 37, alignment: .center)
+
+                    PDFBoxView(backgroundColor: NSColor.gray.withAlphaComponent(0.2))
+                        .frame(width: 1, height: 22)
+
+                    TextField("Désignation", text: Binding(
+                        get: { quoteArticle.article?.name ?? "" },
+                        set: { quoteArticle.article?.name = $0 }
+                    ))
                     .textFieldStyle(.plain)
-                    .multilineTextAlignment(.center)
-                    Text(quoteArticle.unit ?? "")
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                        .foregroundColor(.gray)
+                    .padding(.leading, 4) // ✅ marge intérieure
+                    .frame(width: 270, alignment: .leading)
+
+                    PDFBoxView(backgroundColor: NSColor.gray.withAlphaComponent(0.2))
+                        .frame(width: 1, height: 22)
+
+                    HStack(spacing: 0) {
+                        TextField("", value: Binding(
+                            get: { Double(quoteArticle.quantity) },
+                            set: { quoteArticle.quantity = Int16($0) }
+                        ), format: .number)
+                        .textFieldStyle(.plain)
+                        .multilineTextAlignment(.center)
+
+                        Text(quoteArticle.unit ?? "")
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                            .foregroundColor(.gray)
+                    }
+                    .frame(width: 50, alignment: .trailing)
+
+                    PDFBoxView(backgroundColor: NSColor.gray.withAlphaComponent(0.2))
+                        .frame(width: 1, height: 22)
+
+                    HStack(spacing: 0) {
+                        TextField("", value: Binding(
+                            get: { quoteArticle.article?.price ?? 0.0 },
+                            set: { quoteArticle.article?.price = $0 }
+                        ), format: .number.precision(.fractionLength(2)))
+                        .textFieldStyle(.plain)
+                        .multilineTextAlignment(.trailing)
+
+                        Text(" €")
+                            .foregroundColor(.gray)
+                    }
+                    .frame(width: 70, alignment: .trailing)
+
+                    PDFBoxView(backgroundColor: NSColor.gray.withAlphaComponent(0.2))
+                        .frame(width: 1, height: 22)
+
+                    Text(String(format: "%.0f%%", tvaRate * 100))
+                        .frame(width: 50, alignment: .trailing)
+
+                    PDFBoxView(backgroundColor: NSColor.gray.withAlphaComponent(0.2))
+                        .frame(width: 1, height: 22)
+
+                    Text(String(format: "%.2f €", total))
+                        .frame(width: 77, alignment: .trailing)
+
+                    PDFBoxView(backgroundColor: NSColor.gray.withAlphaComponent(0.2))
+                        .frame(width: 1, height: 22)
                 }
-                .frame(width: 46, alignment: .trailing)
-                .padding(.trailing, 4)
-                TextField("", value: Binding(
-                    get: { quoteArticle.article?.price ?? 0.0 },
-                    set: { quoteArticle.article?.price = $0 }
-                ), format: .number.precision(.fractionLength(2)))
-                .textFieldStyle(.plain)
-                .multilineTextAlignment(.trailing)
-                .frame(width: 66, alignment: .trailing)
-                .padding(.trailing, 4)
-                Text(String(format: "%.0f%%", tvaRate * 100))
-                    .frame(width: 46, alignment: .trailing)
-                    .padding(.trailing, 4)
-                Text(String(format: "%.2f €", total))
-                    .frame(width: 76, alignment: .trailing)
-                    .padding(.trailing, 4)
+                .font(.system(size: 9))
+                .foregroundColor(.black)
             }
-            .font(.system(size: 9))
-            .frame(height: 22)
+            .frame(width: 560, height: 22)
         }
+    }
+    
+}
+
+extension Image {
+    func asNSImage() -> NSImage? {
+        let hostingView = NSHostingView(rootView: self)
+        hostingView.frame = CGRect(x: 0, y: 0, width: 100, height: 100) // Ajuster si besoin
+
+        let bitmapRep = hostingView.bitmapImageRepForCachingDisplay(in: hostingView.bounds)!
+        hostingView.cacheDisplay(in: hostingView.bounds, to: bitmapRep)
+        let nsImage = NSImage(size: hostingView.bounds.size)
+        nsImage.addRepresentation(bitmapRep)
+        return nsImage
+    }
+}
+extension View {
+    func asPDF() -> Data {
+        let controller = NSHostingController(rootView: self)
+        let view = controller.view
+        let printInfo = NSPrintInfo()
+        let pdfData = NSMutableData()
+        
+        printInfo.jobDisposition = .save
+        printInfo.horizontalPagination = .automatic
+        printInfo.verticalPagination = .automatic
+        printInfo.paperSize = NSSize(width: 595, height: 842) // Format A4
+        
+        let printOperation = NSPrintOperation(view: view, printInfo: printInfo)
+        printOperation.showsPrintPanel = false
+        printOperation.showsProgressPanel = false
+        printOperation.run()
+        
+        if let pdfDocument = printOperation.view?.dataWithPDF(inside: printOperation.view!.bounds) {
+            pdfData.append(pdfDocument)
+        }
+        
+        return pdfData as Data
     }
 }

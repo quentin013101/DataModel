@@ -1,4 +1,7 @@
 import SwiftUI
+import PDFKit
+import AppKit
+import UniformTypeIdentifiers
 
 struct NewQuoteView: View {
     @Environment(\.managedObjectContext) private var viewContext
@@ -144,10 +147,114 @@ struct NewQuoteView: View {
     }
 
     func exportPDF() {
-        // Action pour l'export PDF
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.pdf]
+        panel.nameFieldStringValue = "Devis.pdf"
+
+        panel.begin { response in
+            if response == .OK, let url = panel.url {
+                let pdfSize = CGSize(width: 595, height: documentHeight)
+                let pdfView = A4SheetView(
+                    selectedClient: $selectedClient,
+                    quoteArticles: $quoteArticles,
+                    clientProjectAddress: $clientProjectAddress,
+                    projectName: $projectName,
+                    companyInfo: $companyInfo,
+                    showingClientSelection: .constant(false),
+                    showingArticleSelection: .constant(false)
+                )
+                // ✅ Appel avec URL pour enregistrer
+                printToPDF(pdfView, size: pdfSize, saveURL: url)
+            }
+        }
     }
 
     func previewPDF() {
-        // Action pour la prévisualisation PDF
+        let pdfSize = CGSize(width: 595, height: documentHeight)
+
+        let pdfView = A4SheetView(
+            selectedClient: $selectedClient,
+            quoteArticles: $quoteArticles,
+            clientProjectAddress: $clientProjectAddress,
+            projectName: $projectName,
+            companyInfo: $companyInfo,
+            showingClientSelection: .constant(false),
+            showingArticleSelection: .constant(false)
+        )
+
+        // ✅ Appel sans URL → mode "preview"
+        previewPDF(pdfView, size: pdfSize)
+    }
+}
+extension View {
+    func renderAsPDF(size: CGSize) -> Data? {
+        let hostingView = NSHostingView(rootView: self.frame(width: size.width, height: size.height))
+        hostingView.frame = CGRect(origin: .zero, size: size)
+
+        // Ajouter manuellement le layer si absent
+        if hostingView.layer == nil {
+            hostingView.wantsLayer = true
+            hostingView.layer = CALayer()
+        }
+
+        // Forcer le layout
+        hostingView.layoutSubtreeIfNeeded()
+
+        let pdfData = NSMutableData()
+        let consumer = CGDataConsumer(data: pdfData as CFMutableData)!
+        var mediaBox = CGRect(origin: .zero, size: size)
+        guard let context = CGContext(consumer: consumer, mediaBox: &mediaBox, nil) else { return nil }
+
+        // Démarrer la page PDF
+        context.beginPDFPage(nil)
+
+        // Créer un bitmap et dessiner dans le contexte
+        hostingView.layer?.render(in: context)
+
+        context.endPDFPage()
+        context.closePDF()
+
+        return pdfData as Data
+    }
+  
+
+//    func previewPDFData(_ data: Data) {
+//        let tmpURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("AperçuDevis.pdf")
+//        try? data.write(to: tmpURL)
+//        NSWorkspace.shared.open(tmpURL)
+//    }
+
+//    func savePDFData(_ data: Data) {
+//        let panel = NSSavePanel()
+//        panel.allowedContentTypes = [UTType.pdf]
+//        panel.nameFieldStringValue = "Devis.pdf"
+//        panel.begin { response in
+//            if response == .OK, let url = panel.url {
+//                try? data.write(to: url)
+//            }
+//        }
+//    }
+    func printToPDF<V: View>(_ view: V, size: CGSize, saveURL: URL) {
+        let hostingView = NSHostingView(rootView: view)
+        hostingView.frame = CGRect(origin: .zero, size: size)
+
+        let data = hostingView.dataWithPDF(inside: hostingView.bounds)
+        try? data.write(to: saveURL)
+    }
+    func previewPDF<V: View>(_ view: V, size: CGSize) {
+        let tmpURL = FileManager.default.temporaryDirectory.appendingPathComponent("PreviewQuote.pdf")
+        printToPDF(view, size: size, saveURL: tmpURL)
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            NSWorkspace.shared.open(tmpURL)
+        }
+    }
+}
+extension Contact {
+    var fullName: String {
+        let civ = civility ?? ""
+        let first = firstName ?? ""
+        let last = lastName ?? ""
+        return "\(civ) \(first) \(last)".trimmingCharacters(in: .whitespaces)
     }
 }

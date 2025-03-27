@@ -75,6 +75,7 @@ struct A4SheetView: View {
         .font(.system(size: 9))
         .frame(width: 595, alignment: .top)
         .background(Color.white)
+       // .background(Color.red) // temporaire
         .environment(\.colorScheme, .light)
         .animation(.default, value: highlightIndex)
     }
@@ -116,9 +117,8 @@ struct A4SheetView: View {
                     .padding(.bottom, 16)
                 
                 ZStack(alignment: .topLeading) {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color(white: 0.95))
-                    
+                    PDFBoxView(backgroundColor: .lightGray, cornerRadius: 8)
+                        .frame(width: 260, height: 80)
                     if let client = selectedClient {
                         VStack(alignment: .leading, spacing: 6) {
                             let civ = client.civility ?? "M."
@@ -219,16 +219,17 @@ struct A4SheetView: View {
     
     private var articlesSection: some View {
         let tableWidth: CGFloat = 560
-        // Lignes verticales à [0, 40, 310, 360, 430, 480, 560]
         let columnLines: [CGFloat] = [0, 40, 310, 360, 430, 480, 560]
-        
+
         return VStack(spacing: 0) {
             VStack(spacing: 0) {
                 headerRow(width: tableWidth)
-                
+                    .background(Color.red.opacity(0.3)) // ✅ rouge clair de test
+
                 if !quoteArticles.isEmpty {
                     ForEach(quoteArticles.indices, id: \.self) { i in
                         let numberString = lineNumber(for: i)
+
                         DevisLineRowHoverArrows(
                             index: i,
                             lineNumber: numberString,
@@ -246,68 +247,92 @@ struct A4SheetView: View {
                             onInsertLineAbovePrestation: { insertPrestationAbove(i) },
                             onInsertPageBreakBelow: { insertPageBreakBelow(i) },
                             onDelete: { confirmDelete(index: i) },
-                            // Remplacez l'ancien code par ceci :
                             computeCategoryTotal: { _ in computeCategoryTotal(startIndex: i) }
                         )
                     }
-                    
+
                     Rectangle()
                         .frame(height: 1)
                         .foregroundColor(.gray.opacity(0.5))
                         .padding(.top, 2)
                 }
             }
-            .frame(width: tableWidth, alignment: .topLeading)
+            .frame(width: tableWidth)
+           // .background(Color.blue.opacity(0.3)) // ✅ bleu clair autour du tableau (articles seulement)
             .background(
                 VerticalLinesOverlay(positions: columnLines)
             )
-            
-            // Boutons sous le tableau
+
+            // Boutons
             HStack(spacing: 16) {
                 Button("+ Prestation") {
                     showingArticleSelection = true
                 }
-                .foregroundColor(.blue)
-                
                 Button("Catégorie") {
                     addCategory()
                 }
-                .foregroundColor(.blue)
-                
                 Button("Saut de page") {
                     addPageBreak()
                 }
-                .foregroundColor(.blue)
             }
             .padding(.top, 8)
         }
-        .frame(width: tableWidth)
         .padding(.horizontal, 16)
         .padding(.top, 8)
     }
     
     /// N°(40) / Désignation(270) / Qté(50) / PU(70) / TVA(50) / Total(80)
     private func headerRow(width: CGFloat) -> some View {
-        HStack(spacing: 0) {
-            Text("N°")
-                .frame(width: 40, alignment: .center)
-            Text("Désignation")
-                .frame(width: 270, alignment: .center)
-            Text("Qté")
-            // On laisse 50 (pas besoin de marge ?)
-                .frame(width: 50, alignment: .center)
-            Text("PU €")
-                .frame(width: 70, alignment: .center)
-            Text("TVA")
-                .frame(width: 50, alignment: .center)
-            Text("Total €")
-                .frame(width: 80, alignment: .center)
+        ZStack {
+            PDFBoxView(backgroundColor: NSColor(calibratedRed: 106/255, green: 133/255, blue: 187/255, alpha: 1))
+                .frame(height: 22)
+
+            HStack(spacing: 0) {
+                Text("N°")
+                    .frame(width: 40, alignment: .center)
+
+                PDFBoxView(backgroundColor: .white)
+                    .frame(width: 1, height: 22)
+
+                Text("Désignation")
+                    .frame(width: 270, alignment: .center)
+
+                PDFBoxView(backgroundColor: .white)
+                    .frame(width: 1, height: 22)
+
+                Text("Qté")
+                    .frame(width: 50, alignment: .center)
+
+                PDFBoxView(backgroundColor: .white)
+                    .frame(width: 1, height: 22)
+
+                Text("PU €")
+                    .frame(width: 70, alignment: .center)
+
+                PDFBoxView(backgroundColor: .white)
+                    .frame(width: 1, height: 22)
+
+                Text("TVA")
+                    .frame(width: 50, alignment: .center)
+
+                PDFBoxView(backgroundColor: .white)
+                    .frame(width: 1, height: 22)
+
+                Text("Total €")
+                    .frame(width: 80, alignment: .center)
+            }
+            .font(.system(size: 12, weight: .bold))
+            .foregroundColor(.white)
+          //  .background(Color.green) // autour du .frame(width: 560)
+            .frame(width: width) // <== AJOUTE CETTE LIGNE
+
+
         }
-        .font(.system(size: 12, weight: .bold))
-        .foregroundColor(.white)
-        .padding(.vertical, 6)
-        .background(Color(red: 106/255, green: 133/255, blue: 187/255))
+        .frame(width: width, height: 22)
+
     }
+    
+    
     
     // MARK: - 5) Signature / net à payer
     
@@ -357,8 +382,9 @@ struct A4SheetView: View {
                 .font(.system(size: 12))
                 .padding(.vertical, 6)
                 .padding(.horizontal, 8)
-                .background(Color.blue)
-                .foregroundColor(.white)
+                .background(
+                    PDFBoxView(backgroundColor: NSColor(calibratedRed: 106/255, green: 133/255, blue: 187/255, alpha: 1))
+                )                .foregroundColor(.white)
                 .cornerRadius(4)
 
                 Button("Remise") {
@@ -620,6 +646,7 @@ struct A4SheetView: View {
     
     // MARK: - DevisLineRowHoverArrows (ligne d'article + flèches)
     
+    
     fileprivate struct DevisLineRowHoverArrows: View {
         let index: Int
         let lineNumber: String
@@ -772,6 +799,7 @@ struct A4SheetView: View {
             .frame(height: 22)
         }
     }
+    
 }
 
 extension Image {
