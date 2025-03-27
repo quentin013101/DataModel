@@ -14,6 +14,7 @@ struct A4SheetView: View {
     
     @Binding var showingClientSelection: Bool
     @Binding var showingArticleSelection: Bool
+    @Binding var devisNumber: String
     @State private var isShowingRemisePopup = false
     
     @State private var arrowIndex: Int? = nil
@@ -23,7 +24,7 @@ struct A4SheetView: View {
     @State private var remiseIsPercentage: Bool = false
     @State private var remiseValue: Double = 0.0
     @State private var remiseLabel: String = "Remise"
-    @State private var devisNumber: String = ""
+
     
 
 

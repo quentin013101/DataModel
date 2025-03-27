@@ -10,12 +10,13 @@ struct NewQuoteView: View {
     @State private var companyInfo: CompanyInfo = CompanyInfo.loadFromUserDefaults()
     @State private var selectedClient: Contact?
     @State private var quoteArticles: [QuoteArticle] = []
+
     @State private var clientProjectAddress = ""
     @State private var projectName: String = ""
-
     @State private var showingClientSelection = false
     @State private var showingArticleSelection = false
     @State private var showingProjectNameAlert = false
+    @State private var devisNumber: String = ""
     @State private var documentHeight: CGFloat = 842
 
     init() {
@@ -55,7 +56,9 @@ struct NewQuoteView: View {
                                 projectName: $projectName,
                                 companyInfo: $companyInfo,
                                 showingClientSelection: $showingClientSelection,
-                                showingArticleSelection: $showingArticleSelection
+                                showingArticleSelection: $showingArticleSelection,
+                                devisNumber: $devisNumber  // Passer devisNumber ici
+
                             )
                             .background(
                                 GeometryReader { proxy in
@@ -161,7 +164,9 @@ struct NewQuoteView: View {
                     projectName: $projectName,
                     companyInfo: $companyInfo,
                     showingClientSelection: .constant(false),
-                    showingArticleSelection: .constant(false)
+                    showingArticleSelection: .constant(false),
+                    devisNumber: $devisNumber  // Passer devisNumber ici
+
                 )
                 // ✅ Appel avec URL pour enregistrer
                 printToPDF(pdfView, size: pdfSize, saveURL: url)
@@ -179,7 +184,9 @@ struct NewQuoteView: View {
             projectName: $projectName,
             companyInfo: $companyInfo,
             showingClientSelection: .constant(false),
-            showingArticleSelection: .constant(false)
+            showingArticleSelection: .constant(false),
+            devisNumber: $devisNumber  // Passer devisNumber ici
+
         )
 
         // ✅ Appel sans URL → mode "preview"
