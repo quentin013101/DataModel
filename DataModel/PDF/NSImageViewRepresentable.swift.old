@@ -1,0 +1,28 @@
+//
+//  NSImageViewRepresentable.swift
+//  DataModel
+//
+//  Created by Quentin FABERES on 28/03/2025.
+//
+
+
+import SwiftUI
+
+struct NSImageViewRepresentable: NSViewRepresentable {
+    var image: NSImage
+
+    func makeNSView(context: Context) -> NSImageView {
+        let view = NSImageView()
+        view.imageScaling = .scaleProportionallyUpOrDown
+        view.imageAlignment = .alignCenter
+        view.image = image
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.wantsLayer = true
+        view.layer?.masksToBounds = true
+        return view
+    }
+
+    func updateNSView(_ nsView: NSImageView, context: Context) {
+        nsView.image = image
+    }
+}

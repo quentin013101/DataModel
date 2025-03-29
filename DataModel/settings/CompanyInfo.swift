@@ -11,7 +11,7 @@ import SwiftUI
 /// Représente toutes les infos de l'entreprise
 /// que vous saisissez dans `SettingsView`.
 struct CompanyInfo {
-    var logo: Image?             // Logo de l'entreprise
+    var logoData: Data?             // Logo de l'entreprise
     var companyName: String
     var artisanName: String
     var addressLine1: String     // Ex: "6 chemin du boudard"
@@ -58,15 +58,14 @@ extension CompanyInfo {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
         let savePath   = appSupport.appendingPathComponent("MonApp/companyLogo.png")
 
-        var swiftUIImage: Image? = nil
+        var logoData: Data? = nil
         if FileManager.default.fileExists(atPath: savePath.path),
-           let imageData = try? Data(contentsOf: savePath),
-           let nsImage = NSImage(data: imageData) {
-            swiftUIImage = Image(nsImage: nsImage)
+           let data = try? Data(contentsOf: savePath) {
+            logoData = data
         }
 
         return CompanyInfo(
-            logo: swiftUIImage,
+            logoData: logoData,
             companyName: companyName,
             artisanName: artisanName,
             addressLine1: addressLine1,

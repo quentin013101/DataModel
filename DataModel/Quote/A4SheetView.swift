@@ -19,12 +19,16 @@ struct A4SheetView: View {
     
     @State private var arrowIndex: Int? = nil
     @State private var highlightIndex: Int? = nil
-    @State private var sousTotal: Double = 0.0
-    @State private var remiseAmount: Double = 0.0
-    @State private var remiseIsPercentage: Bool = false
-    @State private var remiseValue: Double = 0.0
+   // @State private var sousTotal: Double = 0.0
+   // @State private var remiseAmount: Double = 0.0
+   // @State private var remiseIsPercentage: Bool = false
+   // @State private var remiseValue: Double = 0.0
     @State private var remiseLabel: String = "Remise"
-
+    @Binding var sousTotal: Double
+    @Binding var remiseAmount: Double
+    @Binding var remiseIsPercentage: Bool
+    @Binding var remiseValue: Double
+    @Environment(\.isPrinting) private var isPrinting
     
 
 
@@ -86,12 +90,11 @@ struct A4SheetView: View {
     private var headerSection: some View {
         HStack(alignment: .top, spacing: 0) {
             VStack(alignment: .leading, spacing: 4) {
-                if let nsImage = companyInfo.logo?.asNSImage() {
-                    Image(nsImage: nsImage)
-                        .resizable()
-                        .scaledToFit()
+                if let logoData = companyInfo.logoData,
+                   let nsImage = NSImage(data: logoData) {
+                    LogoImageView(imageData: companyInfo.logoData, size: CGSize(width: 100, height: 100))
                         .frame(width: 100, height: 100)
-                } else {
+                }  else {
                     Text(companyInfo.companyName)
                         .font(.title2)
                         .bold()
@@ -108,17 +111,16 @@ struct A4SheetView: View {
             VStack(alignment: .trailing, spacing: 4) {
                 Text("Devis N° \(devisNumber)") // 🔹 Numéro unique généré
                     .font(.headline)
-                    .padding(.top, 32)
+                    .padding(.top, 16)
                 
                 Text("En date du \(formattedToday)")
-                    .font(.subheadline)
-                
+                    .font(.system(size: 10))
                 Text("Valable 3 mois")
                     .font(.subheadline)
-                    .padding(.bottom, 16)
+                    .padding(.bottom, 10)
                 
                 ZStack(alignment: .topLeading) {
-                    PDFBoxView(backgroundColor: .lightGray, cornerRadius: 8)
+                    PDFBoxView(backgroundColor: NSColor.gray.withAlphaComponent(0.5), cornerRadius: 8)
                         .frame(width: 260, height: 80)
                     if let client = selectedClient {
                         VStack(alignment: .leading, spacing: 6) {
@@ -209,18 +211,24 @@ struct A4SheetView: View {
     // MARK: - 2) Nom du projet
     
     private var projectNameField: some View {
-        TextField("Nom du projet", text: $projectName)
-            .font(.system(size: 13).bold().italic())
-            .padding(.horizontal, 16)
-            .padding(.vertical, 4)
-            .padding(.top, 16)
+        Group {
+            if !isPrinting {
+                TextField("Nom du projet", text: $projectName)
+                    .font(.system(size: 13).bold().italic())
+            } else {
+                Text(projectName) // ✅ Affiche le nom du projet en lecture seule lors de l'export
+                    .font(.system(size: 13).bold().italic())
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 4)
+        .padding(.top, 16)
     }
     
     // MARK: - 3) Articles
     
     private var articlesSection: some View {
         let tableWidth: CGFloat = 560
-        let columnLines: [CGFloat] = [0, 40, 310, 360, 430, 480, 560]
 
         return VStack(spacing: 0) {
             VStack(spacing: 0) {
@@ -256,23 +264,23 @@ struct A4SheetView: View {
                 }
             }
             .frame(width: tableWidth)
-            //.background(Color.blue.opacity(0.3) .frame(width: tableWidth)) // ✅ bleu clair autour du tableau (articles seulement)
-//            .background(
-//                VerticalLinesOverlay(positions: columnLines))
 
-            // Boutons
-            HStack(spacing: 16) {
-                Button("+ Prestation") {
-                    showingArticleSelection = true
+            if isPrinting {
+                Spacer().frame(height: 40) // 🟢 Remplace les boutons à l’export
+            } else {
+                HStack(spacing: 16) {
+                    Button("+ Prestation") {
+                        showingArticleSelection = true
+                    }
+                    Button("Catégorie") {
+                        addCategory()
+                    }
+                    Button("Saut de page") {
+                        addPageBreak()
+                    }
                 }
-                Button("Catégorie") {
-                    addCategory()
-                }
-                Button("Saut de page") {
-                    addPageBreak()
-                }
+                .padding(.top, 8)
             }
-            .padding(.top, 8)
         }
         .padding(.horizontal, 16)
         .padding(.top, 8)
@@ -355,10 +363,11 @@ struct A4SheetView: View {
                     
                     HStack {
                         // 🔹 TextField pour modifier le mot "Remise"
-                        TextField("Remise", text: $remiseLabel)
+                        TextField("Remise :", text: $remiseLabel)
                             .font(.system(size: 10).bold())
                             .textFieldStyle(.plain)
-                            .frame(width: 80, alignment: .leading)
+                            .multilineTextAlignment(.trailing)
+                            .frame(maxWidth: .infinity, alignment: .trailing)
 
                         // Valeur de la remise
                         Text(remiseIsPercentage ? "\(remiseValue)%" : String(format: "%.2f €", remiseAmount))
@@ -385,10 +394,10 @@ struct A4SheetView: View {
                     PDFBoxView(backgroundColor: NSColor(calibratedRed: 106/255, green: 133/255, blue: 187/255, alpha: 1))
                 )                .foregroundColor(.white)
                 .cornerRadius(4)
-
-                Button("Remise") {
-                    isShowingRemisePopup = true
-                }
+                if !isPrinting {
+                    Button("Remise") {
+                        isShowingRemisePopup = true
+                    }
                 .sheet(isPresented: $isShowingRemisePopup) {
                     RemisePopupView(
                         isPresented: $isShowingRemisePopup,
@@ -400,6 +409,7 @@ struct A4SheetView: View {
                         }
                     )
                 }
+                }
             }
             //.padding()
             .frame(width: 200, alignment: .trailing)
@@ -409,7 +419,7 @@ struct A4SheetView: View {
                // computeTotal()
             }
             .frame(width: 200, alignment: .trailing)
-            .padding(.top, -40)
+            .padding(.top, -50)
 
         }
         .padding(.horizontal, 16)
@@ -447,9 +457,11 @@ struct A4SheetView: View {
                 Text("Le Client")
                     .font(.system(size: 9).bold())
                 ZStack(alignment: .topLeading) {
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(Color(white: 0.9))
+                    PDFBoxView(backgroundColor: NSColor.gray.withAlphaComponent(0.5), cornerRadius: 8)
                         .frame(width: 240, height: 90)
+//                    RoundedRectangle(cornerRadius: 4)
+//                        .fill(Color(white: 0.9))
+//                        .frame(width: 240, height: 90)
                     Text("Mention manuscrite et datée :\n« Devis reçu avant l’exécution des travaux. Bon pour travaux. ")
                         .font(.system(size: 7))
                         .foregroundColor(.gray)
@@ -460,11 +472,14 @@ struct A4SheetView: View {
             Spacer()
             
             VStack(alignment: .leading, spacing: 8) {
+
                 Text(companyInfo.companyName)
                     .font(.system(size: 9).bold())
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(Color(white: 0.9))
-                    .frame(width: 240, height: 80)
+                PDFBoxView(backgroundColor: NSColor.gray.withAlphaComponent(0.5), cornerRadius: 8)
+                    .frame(width: 240, height: 90)
+//                RoundedRectangle(cornerRadius: 4)
+//                    .fill(Color(white: 0.9))
+//                    .frame(width: 240, height: 80)
             }
         }
         .padding(.horizontal, 16)
@@ -507,6 +522,7 @@ struct A4SheetView: View {
         }
         return sousTotal - remiseAmount
     }
+
     // MARK: - Logique articles
     
     private func lineNumber(for index: Int) -> String {
@@ -647,6 +663,8 @@ struct A4SheetView: View {
     
     
     fileprivate struct DevisLineRowHoverArrows: View {
+        @Environment(\.isPrinting) private var isPrinting
+
         let index: Int
         let lineNumber: String
         private let allUnits = ["hr", "u", "m", "m²", "m3", "ml", "l", "kg", "forfait"]
@@ -724,32 +742,71 @@ struct A4SheetView: View {
         // Définition des autres vues (categoryRow, pageBreakRow, articleRow) reste inchangée…
         private var categoryRow: some View {
             let catTotal = computeCategoryTotal(index)
-            return HStack(spacing: 0) {
-                Text(lineNumber)
-                    .frame(width: 40, alignment: .center)
-                TextField("Catégorie", text: Binding(
-                    get: { quoteArticle.comment ?? "" },
-                    set: { quoteArticle.comment = $0 }
-                ))
-                .textFieldStyle(.roundedBorder)
-                .font(.system(size: 11, weight: .bold))
-                .frame(width: 440, alignment: .leading)
-                Text(String(format: "%.2f €", catTotal))
-                    .font(.system(size: 11, weight: .bold))
-                    .frame(width: 80, alignment: .trailing)
+
+            return ZStack {
+                // 🔹 Fond sur toute la ligne (y compris sous les PDFBoxView)
+                PDFBoxView(backgroundColor: NSColor.gray.withAlphaComponent(0.5))
+                    .frame(width: 560, height: 22)
+
+                HStack(spacing: 0) {
+                    PDFBoxView(backgroundColor: NSColor.gray.withAlphaComponent(0.2))
+                        .frame(width: 1, height: 22)
+                    Text(lineNumber)
+                        .frame(width: 37, alignment: .center)
+                    PDFBoxView(backgroundColor: NSColor.gray.withAlphaComponent(0.2))
+                        .frame(width: 1, height: 22)
+
+                    if isPrinting {
+                        Text(quoteArticle.comment ?? "")
+                            .font(.system(size: 11, weight: .bold))
+                            .frame(width: 443, alignment: .leading)
+                    } else {
+                        TextField("Catégorie", text: Binding(
+                            get: { quoteArticle.comment ?? "" },
+                            set: { quoteArticle.comment = $0 }
+                        ))
+                        .textFieldStyle(.roundedBorder)
+                        .font(.system(size: 11, weight: .bold))
+                        .frame(width: 443, alignment: .leading)
+                    }
+
+                    PDFBoxView(backgroundColor: NSColor.gray.withAlphaComponent(0.2))
+                        .frame(width: 1, height: 22)
+
+                    Text(String(format: "%.2f €", catTotal))
+                        .font(.system(size: 11, weight: .bold))
+                        .frame(width: 77, alignment: .trailing)
+
+                    PDFBoxView(backgroundColor: NSColor.gray.withAlphaComponent(0.2))
+                        .frame(width: 1, height: 22)
+                }
             }
             .frame(height: 22)
-            .background(Color(white: 0.95))
         }
         
+//        private var pageBreakRow: some View {
+//            HStack(spacing: 0) {
+//                Text("---- SAUT DE PAGE ----")
+//                    .foregroundColor(.red)
+//                    .multilineTextAlignment(.center)
+//                    .frame(width: 560, alignment: .center)
+//            }
+//            .frame(height: 22)
+//        }
         private var pageBreakRow: some View {
-            HStack(spacing: 0) {
-                Text("---- SAUT DE PAGE ----")
-                    .foregroundColor(.red)
-                    .multilineTextAlignment(.center)
-                    .frame(width: 560, alignment: .center)
+            Group {
+                if !isPrinting {
+                    HStack(spacing: 0) {
+                        Text("---- SAUT DE PAGE ----")
+                            .foregroundColor(.red)
+                            .multilineTextAlignment(.center)
+                            .frame(width: 560, alignment: .center)
+                    }
+                    .frame(height: 22)
+                } else {
+                    EmptyView() // 🧼 Pas d'espace en PDF
+                }
             }
-            .frame(height: 22)
         }
         
         private var articleRow: some View {
@@ -835,39 +892,39 @@ struct A4SheetView: View {
     
 }
 
-extension Image {
-    func asNSImage() -> NSImage? {
-        let hostingView = NSHostingView(rootView: self)
-        hostingView.frame = CGRect(x: 0, y: 0, width: 100, height: 100) // Ajuster si besoin
-
-        let bitmapRep = hostingView.bitmapImageRepForCachingDisplay(in: hostingView.bounds)!
-        hostingView.cacheDisplay(in: hostingView.bounds, to: bitmapRep)
-        let nsImage = NSImage(size: hostingView.bounds.size)
-        nsImage.addRepresentation(bitmapRep)
-        return nsImage
-    }
-}
-extension View {
-    func asPDF() -> Data {
-        let controller = NSHostingController(rootView: self)
-        let view = controller.view
-        let printInfo = NSPrintInfo()
-        let pdfData = NSMutableData()
-        
-        printInfo.jobDisposition = .save
-        printInfo.horizontalPagination = .automatic
-        printInfo.verticalPagination = .automatic
-        printInfo.paperSize = NSSize(width: 595, height: 842) // Format A4
-        
-        let printOperation = NSPrintOperation(view: view, printInfo: printInfo)
-        printOperation.showsPrintPanel = false
-        printOperation.showsProgressPanel = false
-        printOperation.run()
-        
-        if let pdfDocument = printOperation.view?.dataWithPDF(inside: printOperation.view!.bounds) {
-            pdfData.append(pdfDocument)
-        }
-        
-        return pdfData as Data
-    }
-}
+//extension Image {
+//    func asNSImage() -> NSImage? {
+//        let hostingView = NSHostingView(rootView: self)
+//        hostingView.frame = CGRect(x: 0, y: 0, width: 100, height: 100) // Ajuster si besoin
+//
+//        let bitmapRep = hostingView.bitmapImageRepForCachingDisplay(in: hostingView.bounds)!
+//        hostingView.cacheDisplay(in: hostingView.bounds, to: bitmapRep)
+//        let nsImage = NSImage(size: hostingView.bounds.size)
+//        nsImage.addRepresentation(bitmapRep)
+//        return nsImage
+//    }
+//}
+//extension View {
+//    func asPDF() -> Data {
+//        let controller = NSHostingController(rootView: self)
+//        let view = controller.view
+//        let printInfo = NSPrintInfo()
+//        let pdfData = NSMutableData()
+//        
+//        printInfo.jobDisposition = .save
+//        printInfo.horizontalPagination = .automatic
+//        printInfo.verticalPagination = .automatic
+//        printInfo.paperSize = NSSize(width: 595, height: 842) // Format A4
+//        
+//        let printOperation = NSPrintOperation(view: view, printInfo: printInfo)
+//        printOperation.showsPrintPanel = false
+//        printOperation.showsProgressPanel = false
+//        printOperation.run()
+//        
+//        if let pdfDocument = printOperation.view?.dataWithPDF(inside: printOperation.view!.bounds) {
+//            pdfData.append(pdfDocument)
+//        }
+//        
+//        return pdfData as Data
+//    }
+//}

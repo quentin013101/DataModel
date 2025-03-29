@@ -17,6 +17,10 @@ struct NewQuoteView: View {
     @State private var showingArticleSelection = false
     @State private var showingProjectNameAlert = false
     @State private var devisNumber: String = ""
+    @State private var sousTotal: Double = 0.0
+    @State private var remiseAmount: Double = 0.0
+    @State private var remiseIsPercentage: Bool = false
+    @State private var remiseValue: Double = 0.0
     @State private var documentHeight: CGFloat = 842
 
     init() {
@@ -57,7 +61,11 @@ struct NewQuoteView: View {
                                 companyInfo: $companyInfo,
                                 showingClientSelection: $showingClientSelection,
                                 showingArticleSelection: $showingArticleSelection,
-                                devisNumber: $devisNumber  // Passer devisNumber ici
+                                devisNumber: $devisNumber,
+                                sousTotal: $sousTotal,
+                                remiseAmount: $remiseAmount,
+                                remiseIsPercentage: $remiseIsPercentage,
+                                remiseValue: $remiseValue// Passer devisNumber ici
 
                             )
                             .background(
@@ -165,7 +173,11 @@ struct NewQuoteView: View {
                     companyInfo: $companyInfo,
                     showingClientSelection: .constant(false),
                     showingArticleSelection: .constant(false),
-                    devisNumber: $devisNumber  // Passer devisNumber ici
+                    devisNumber: $devisNumber,
+                    sousTotal: $sousTotal,
+                    remiseAmount: $remiseAmount,
+                    remiseIsPercentage: $remiseIsPercentage,
+                    remiseValue: $remiseValue// Passer devisNumber ici
 
                 )
                 // ✅ Appel avec URL pour enregistrer
@@ -185,7 +197,11 @@ struct NewQuoteView: View {
             companyInfo: $companyInfo,
             showingClientSelection: .constant(false),
             showingArticleSelection: .constant(false),
-            devisNumber: $devisNumber  // Passer devisNumber ici
+            devisNumber: $devisNumber,
+            sousTotal: $sousTotal,
+            remiseAmount: $remiseAmount,
+            remiseIsPercentage: $remiseIsPercentage,
+            remiseValue: $remiseValue// Passer devisNumber ici
 
         )
 
@@ -194,60 +210,45 @@ struct NewQuoteView: View {
     }
 }
 extension View {
-    func renderAsPDF(size: CGSize) -> Data? {
-        let hostingView = NSHostingView(rootView: self.frame(width: size.width, height: size.height))
-        hostingView.frame = CGRect(origin: .zero, size: size)
-
-        // Ajouter manuellement le layer si absent
-        if hostingView.layer == nil {
-            hostingView.wantsLayer = true
-            hostingView.layer = CALayer()
-        }
-
-        // Forcer le layout
-        hostingView.layoutSubtreeIfNeeded()
-
-        let pdfData = NSMutableData()
-        let consumer = CGDataConsumer(data: pdfData as CFMutableData)!
-        var mediaBox = CGRect(origin: .zero, size: size)
-        guard let context = CGContext(consumer: consumer, mediaBox: &mediaBox, nil) else { return nil }
-
-        // Démarrer la page PDF
-        context.beginPDFPage(nil)
-
-        // Créer un bitmap et dessiner dans le contexte
-        hostingView.layer?.render(in: context)
-
-        context.endPDFPage()
-        context.closePDF()
-
-        return pdfData as Data
-    }
-  
-
-//    func previewPDFData(_ data: Data) {
-//        let tmpURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("AperçuDevis.pdf")
-//        try? data.write(to: tmpURL)
-//        NSWorkspace.shared.open(tmpURL)
-//    }
-
-//    func savePDFData(_ data: Data) {
-//        let panel = NSSavePanel()
-//        panel.allowedContentTypes = [UTType.pdf]
-//        panel.nameFieldStringValue = "Devis.pdf"
-//        panel.begin { response in
-//            if response == .OK, let url = panel.url {
-//                try? data.write(to: url)
-//            }
+//    func renderAsPDF(size: CGSize) -> Data? {
+//        let hostingView = NSHostingView(rootView: self.frame(width: size.width, height: size.height))
+//        hostingView.frame = CGRect(origin: .zero, size: size)
+//
+//        // Ajouter manuellement le layer si absent
+//        if hostingView.layer == nil {
+//            hostingView.wantsLayer = true
+//            hostingView.layer = CALayer()
 //        }
+//
+//        // Forcer le layout
+//        hostingView.layoutSubtreeIfNeeded()
+//
+//        let pdfData = NSMutableData()
+//        let consumer = CGDataConsumer(data: pdfData as CFMutableData)!
+//        var mediaBox = CGRect(origin: .zero, size: size)
+//        guard let context = CGContext(consumer: consumer, mediaBox: &mediaBox, nil) else { return nil }
+//
+//        // Démarrer la page PDF
+//        context.beginPDFPage(nil)
+//
+//        // Créer un bitmap et dessiner dans le contexte
+//        hostingView.layer?.render(in: context)
+//
+//        context.endPDFPage()
+//        context.closePDF()
+//
+//        return pdfData as Data
 //    }
+  
     func printToPDF<V: View>(_ view: V, size: CGSize, saveURL: URL) {
-        let hostingView = NSHostingView(rootView: view)
+        let printableView = view.environment(\.isPrinting, true) // ✅ Injecte isPrinting = true
+        let hostingView = NSHostingView(rootView: printableView)
         hostingView.frame = CGRect(origin: .zero, size: size)
 
         let data = hostingView.dataWithPDF(inside: hostingView.bounds)
         try? data.write(to: saveURL)
     }
+
     func previewPDF<V: View>(_ view: V, size: CGSize) {
         let tmpURL = FileManager.default.temporaryDirectory.appendingPathComponent("PreviewQuote.pdf")
         printToPDF(view, size: size, saveURL: tmpURL)
