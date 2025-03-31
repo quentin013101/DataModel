@@ -65,19 +65,16 @@ struct NewQuoteView: View {
                                 sousTotal: $sousTotal,
                                 remiseAmount: $remiseAmount,
                                 remiseIsPercentage: $remiseIsPercentage,
-                                remiseValue: $remiseValue// Passer devisNumber ici
-
+                                remiseValue: $remiseValue
                             )
                             .background(
                                 GeometryReader { proxy in
                                     Color.clear
                                         .onAppear {
                                             documentHeight = proxy.size.height
-                                            print("Hauteur réelle du document : \(proxy.size.height)")
                                         }
                                         .onChange(of: proxy.size.height) { newHeight in
                                             documentHeight = newHeight
-                                            print("Nouvelle hauteur réelle du document : \(newHeight)")
                                         }
                                 }
                             )
@@ -85,19 +82,15 @@ struct NewQuoteView: View {
                         }
                         .frame(width: 595, height: max(documentHeight, 842), alignment: .top)
                     }
-                    .frame(width: 595, height: 842) // toujours taille A4 réelle
-                    .scaleEffect(scaleFactor, anchor: .center) // zoom uniquement extérieur
+                    .frame(width: 595, height: 842)
+                    .scaleEffect(scaleFactor, anchor: .center)
                     .frame(width: scaledWidth, height: geo.size.height, alignment: .center)
                     .background(Color.gray.opacity(0.1))
                     .clipped()
                     .position(x: geo.size.width / 2, y: geo.size.height / 2)
                 }
             }
-            .popover(
-                isPresented: $showingClientSelection,
-                attachmentAnchor: .point(.center),
-                arrowEdge: .top
-            ) {
+            .popover(isPresented: $showingClientSelection) {
                 NavigationView {
                     ClientSelectionView(selectedClient: $selectedClient,
                                         clientProjectAddress: $clientProjectAddress)
@@ -117,11 +110,7 @@ struct NewQuoteView: View {
                     }
                 }
             }
-            .popover(
-                isPresented: $showingArticleSelection,
-                attachmentAnchor: .point(.center),
-                arrowEdge: .top
-            ) {
+            .popover(isPresented: $showingArticleSelection) {
                 NavigationView {
                     ArticleSelectionView { article, quantity in
                         let newQA = QuoteArticle(
@@ -164,7 +153,6 @@ struct NewQuoteView: View {
 
         panel.begin { response in
             if response == .OK, let url = panel.url {
-                let pdfSize = CGSize(width: 595, height: documentHeight)
                 let pdfView = A4SheetView(
                     selectedClient: $selectedClient,
                     quoteArticles: $quoteArticles,
@@ -177,18 +165,43 @@ struct NewQuoteView: View {
                     sousTotal: $sousTotal,
                     remiseAmount: $remiseAmount,
                     remiseIsPercentage: $remiseIsPercentage,
-                    remiseValue: $remiseValue// Passer devisNumber ici
-
+                    remiseValue: $remiseValue
                 )
-                // ✅ Appel avec URL pour enregistrer
-                printToPDF(pdfView, size: pdfSize, saveURL: url)
+                .environment(\.isPrinting, true)
+                .frame(width: 595)
+                .fixedSize(horizontal: false, vertical: true)
+
+                let hostingView = NSHostingView(rootView: pdfView)
+                let contentSize = hostingView.fittingSize
+                hostingView.frame = CGRect(origin: .zero, size: contentSize)
+
+                // ✅ View container fixe largeur 595
+                let container = NSView(frame: CGRect(x: 0, y: 0, width: 595, height: contentSize.height))
+                hostingView.setFrameOrigin(NSPoint(x: 0, y: 0)) // 👈 Important !
+                container.addSubview(hostingView)
+
+                let printInfo = NSPrintInfo()
+                printInfo.jobDisposition = .save
+                printInfo.paperSize = NSSize(width: 595, height: 842)
+                printInfo.topMargin = 0
+                printInfo.bottomMargin = 0
+                printInfo.leftMargin = 0
+                printInfo.rightMargin = 0
+                printInfo.verticalPagination = .automatic
+                printInfo.horizontalPagination = .automatic
+                printInfo.isHorizontallyCentered = false
+                printInfo.isVerticallyCentered = false
+                printInfo.dictionary()[NSPrintInfo.AttributeKey(rawValue: "NSJobSavingURL")] = url as NSURL
+
+                let printOp = NSPrintOperation(view: container, printInfo: printInfo)
+                printOp.showsPrintPanel = false
+                printOp.showsProgressPanel = false
+                printOp.run()
             }
         }
     }
 
     func previewPDF() {
-        let pdfSize = CGSize(width: 595, height: documentHeight)
-
         let pdfView = A4SheetView(
             selectedClient: $selectedClient,
             quoteArticles: $quoteArticles,
@@ -201,63 +214,47 @@ struct NewQuoteView: View {
             sousTotal: $sousTotal,
             remiseAmount: $remiseAmount,
             remiseIsPercentage: $remiseIsPercentage,
-            remiseValue: $remiseValue// Passer devisNumber ici
-
+            remiseValue: $remiseValue
         )
+        .environment(\.isPrinting, true)
+        .frame(width: 595)
+        .fixedSize(horizontal: false, vertical: true)
 
-        // ✅ Appel sans URL → mode "preview"
-        previewPDF(pdfView, size: pdfSize)
-    }
-}
-extension View {
-//    func renderAsPDF(size: CGSize) -> Data? {
-//        let hostingView = NSHostingView(rootView: self.frame(width: size.width, height: size.height))
-//        hostingView.frame = CGRect(origin: .zero, size: size)
-//
-//        // Ajouter manuellement le layer si absent
-//        if hostingView.layer == nil {
-//            hostingView.wantsLayer = true
-//            hostingView.layer = CALayer()
-//        }
-//
-//        // Forcer le layout
-//        hostingView.layoutSubtreeIfNeeded()
-//
-//        let pdfData = NSMutableData()
-//        let consumer = CGDataConsumer(data: pdfData as CFMutableData)!
-//        var mediaBox = CGRect(origin: .zero, size: size)
-//        guard let context = CGContext(consumer: consumer, mediaBox: &mediaBox, nil) else { return nil }
-//
-//        // Démarrer la page PDF
-//        context.beginPDFPage(nil)
-//
-//        // Créer un bitmap et dessiner dans le contexte
-//        hostingView.layer?.render(in: context)
-//
-//        context.endPDFPage()
-//        context.closePDF()
-//
-//        return pdfData as Data
-//    }
-  
-    func printToPDF<V: View>(_ view: V, size: CGSize, saveURL: URL) {
-        let printableView = view.environment(\.isPrinting, true) // ✅ Injecte isPrinting = true
-        let hostingView = NSHostingView(rootView: printableView)
-        hostingView.frame = CGRect(origin: .zero, size: size)
+        let hostingView = NSHostingView(rootView: pdfView)
+        let contentSize = hostingView.fittingSize
+        hostingView.frame = CGRect(origin: .zero, size: contentSize)
 
-        let data = hostingView.dataWithPDF(inside: hostingView.bounds)
-        try? data.write(to: saveURL)
-    }
+        let container = NSView(frame: CGRect(x: 0, y: 0, width: 595, height: contentSize.height))
+        hostingView.setFrameOrigin(NSPoint(x: 0, y: 0))
+        container.addSubview(hostingView)
 
-    func previewPDF<V: View>(_ view: V, size: CGSize) {
         let tmpURL = FileManager.default.temporaryDirectory.appendingPathComponent("PreviewQuote.pdf")
-        printToPDF(view, size: size, saveURL: tmpURL)
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            NSWorkspace.shared.open(tmpURL)
+        let printInfo = NSPrintInfo()
+        printInfo.jobDisposition = .save
+        printInfo.paperSize = NSSize(width: 595, height: 842)
+        printInfo.topMargin = 0
+        printInfo.bottomMargin = 0
+        printInfo.leftMargin = 0
+        printInfo.rightMargin = 0
+        printInfo.verticalPagination = .automatic
+        printInfo.horizontalPagination = .automatic
+        printInfo.isHorizontallyCentered = false
+        printInfo.isVerticallyCentered = false
+        printInfo.dictionary()[NSPrintInfo.AttributeKey(rawValue: "NSJobSavingURL")] = tmpURL as NSURL
+
+        let printOp = NSPrintOperation(view: container, printInfo: printInfo)
+        printOp.showsPrintPanel = false
+        printOp.showsProgressPanel = false
+
+        if printOp.run() {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                NSWorkspace.shared.open(tmpURL)
+            }
         }
     }
 }
+
 extension Contact {
     var fullName: String {
         let civ = civility ?? ""

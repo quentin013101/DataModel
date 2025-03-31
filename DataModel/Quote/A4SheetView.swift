@@ -657,6 +657,25 @@ struct A4SheetView: View {
                 .stroke(Color.black.opacity(0.2), lineWidth: 1)
             }
         }
+//        private func splitIntoPages() -> [[QuoteArticle]] {
+//            var pages: [[QuoteArticle]] = []
+//            var currentPage: [QuoteArticle] = []
+//
+//            for article in quoteArticles {
+//                if article.lineType == .pageBreak {
+//                    pages.append(currentPage)
+//                    currentPage = []
+//                } else {
+//                    currentPage.append(article)
+//                }
+//            }
+//
+//            if !currentPage.isEmpty {
+//                pages.append(currentPage)
+//            }
+//
+//            return pages
+//        }
     }
     
     // MARK: - DevisLineRowHoverArrows (ligne d'article + flèches)
