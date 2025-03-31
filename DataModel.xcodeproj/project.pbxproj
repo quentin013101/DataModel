@@ -35,6 +35,7 @@
 			membershipExceptions = (
 				PDF/NSImageViewRepresentable.swift.old,
 				Quote/A4SheetView.old,
+				"Quote/NewQuoteView 2.swift.test",
 				Quote/NewQuoteView.old,
 				Quote/ScalableA4SheetView.swift.old,
 				Quote/TableColumns.old,
@@ -50,6 +51,7 @@
 			membershipExceptions = (
 				PDF/NSImageViewRepresentable.swift.old,
 				Quote/A4SheetView.old,
+				"Quote/NewQuoteView 2.swift.test",
 				Quote/NewQuoteView.old,
 				Quote/ScalableA4SheetView.swift.old,
 				Quote/TableColumns.old,

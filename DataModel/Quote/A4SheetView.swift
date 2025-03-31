@@ -19,7 +19,8 @@ struct A4SheetView: View {
     
     @State private var arrowIndex: Int? = nil
     @State private var highlightIndex: Int? = nil
-   // @State private var sousTotal: Double = 0.0
+    @Binding var signatureBlockHeight: CGFloat
+    // @State private var sousTotal: Double = 0.0
    // @State private var remiseAmount: Double = 0.0
    // @State private var remiseIsPercentage: Bool = false
    // @State private var remiseValue: Double = 0.0
@@ -66,11 +67,25 @@ struct A4SheetView: View {
             projectNameField
             articlesSection
             
-            signatureSection
-                .padding(.top, 16)
-            
-            clientProSignatureSection
-                .padding(.top, 16)
+            VStack(spacing: 0) {
+                signatureSection
+                    .padding(.top, 16)
+
+                clientProSignatureSection
+                    .padding(.top, 16)
+            }
+            .background(
+                GeometryReader { geo in
+                    Color.clear
+                        .onAppear {
+                            signatureBlockHeight = geo.size.height
+                            print("📏 Signature block height: \(signatureBlockHeight)")
+                        }
+                        .onChange(of: geo.size.height) { newHeight in
+                            signatureBlockHeight = newHeight
+                        }
+                }
+            )
             
             Spacer(minLength: 0)
                 .layoutPriority(-1)
@@ -929,21 +944,21 @@ struct A4SheetView: View {
 //        let view = controller.view
 //        let printInfo = NSPrintInfo()
 //        let pdfData = NSMutableData()
-//        
+//
 //        printInfo.jobDisposition = .save
 //        printInfo.horizontalPagination = .automatic
 //        printInfo.verticalPagination = .automatic
 //        printInfo.paperSize = NSSize(width: 595, height: 842) // Format A4
-//        
+//
 //        let printOperation = NSPrintOperation(view: view, printInfo: printInfo)
 //        printOperation.showsPrintPanel = false
 //        printOperation.showsProgressPanel = false
 //        printOperation.run()
-//        
+//
 //        if let pdfDocument = printOperation.view?.dataWithPDF(inside: printOperation.view!.bounds) {
 //            pdfData.append(pdfDocument)
 //        }
-//        
+//
 //        return pdfData as Data
 //    }
 //}

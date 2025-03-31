@@ -22,7 +22,6 @@ struct NewQuoteView: View {
     @State private var remiseIsPercentage: Bool = false
     @State private var remiseValue: Double = 0.0
     @State private var documentHeight: CGFloat = 842
-    @State private var signatureBlockHeight: CGFloat = 0
 
     init() {
         self.companyInfo = CompanyInfo.loadFromUserDefaults()
@@ -63,7 +62,6 @@ struct NewQuoteView: View {
                                 showingClientSelection: $showingClientSelection,
                                 showingArticleSelection: $showingArticleSelection,
                                 devisNumber: $devisNumber,
-                                signatureBlockHeight: $signatureBlockHeight,
                                 sousTotal: $sousTotal,
                                 remiseAmount: $remiseAmount,
                                 remiseIsPercentage: $remiseIsPercentage,
@@ -155,60 +153,26 @@ struct NewQuoteView: View {
 
         panel.begin { response in
             if response == .OK, let url = panel.url {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    ensureSignatureBlockFits()
-                    renderA4SheetToPDF(saveURL: url)
-                }
+                renderA4SheetToPDF(saveURL: url)
             }
         }
     }
 
     func previewPDF() {
         let tmpURL = FileManager.default.temporaryDirectory.appendingPathComponent("PreviewQuote.pdf")
+        renderA4SheetToPDF(saveURL: tmpURL)
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            ensureSignatureBlockFits()
-            renderA4SheetToPDF(saveURL: tmpURL)
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                NSWorkspace.shared.open(tmpURL)
-            }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            NSWorkspace.shared.open(tmpURL)
         }
     }
-    func ensureSignatureBlockFits() {
-        guard signatureBlockHeight > 0 else {
-            print("⚠️ signatureBlockHeight pas encore mesuré")
-            return
-        }
 
-        let pageHeight: CGFloat = 842
-        let headerHeight: CGFloat = 270
-        let articleRowHeight: CGFloat = 22
-
-        let totalArticleHeight = CGFloat(quoteArticles.count) * articleRowHeight
-        let totalBeforeSignatures = headerHeight + totalArticleHeight
-
-        let spaceRemaining = pageHeight - (totalBeforeSignatures.truncatingRemainder(dividingBy: pageHeight))
-
-        print("🧮 Remaining space: \(spaceRemaining) — Signature block: \(signatureBlockHeight + 32)")
-
-        if spaceRemaining < (signatureBlockHeight + 32) {
-            if quoteArticles.last?.lineType != .pageBreak {
-                print("🚨 Pas assez de place, ajout d’un saut de page")
-
-                if let lastCategoryIndex = quoteArticles.lastIndex(where: { $0.lineType == .category }) {
-                    quoteArticles.insert(QuoteArticle(lineType: .pageBreak), at: lastCategoryIndex)
-                } else {
-                    quoteArticles.append(QuoteArticle(lineType: .pageBreak))
-                }
-            }
-        }
-    }
     func renderA4SheetToPDF(saveURL: URL) {
         let pageWidth: CGFloat = 595
         let pageHeight: CGFloat = 842
 
-        let rootView = A4SheetView(
+        // 1. Mesurer la hauteur réelle
+        let measuringView = A4SheetView(
             selectedClient: $selectedClient,
             quoteArticles: $quoteArticles,
             clientProjectAddress: $clientProjectAddress,
@@ -217,7 +181,6 @@ struct NewQuoteView: View {
             showingClientSelection: .constant(false),
             showingArticleSelection: .constant(false),
             devisNumber: $devisNumber,
-            signatureBlockHeight: $signatureBlockHeight,
             sousTotal: $sousTotal,
             remiseAmount: $remiseAmount,
             remiseIsPercentage: $remiseIsPercentage,
@@ -227,28 +190,55 @@ struct NewQuoteView: View {
         .frame(width: pageWidth)
         .fixedSize(horizontal: false, vertical: true)
 
-        let hostingView = NSHostingView(rootView: rootView)
-        hostingView.frame.size = hostingView.fittingSize
+        let measuringHost = NSHostingView(rootView: measuringView)
+        measuringHost.frame = CGRect(origin: .zero, size: measuringHost.fittingSize)
+        let totalHeight = measuringHost.fittingSize.height
+        let pageCount = Int(ceil(totalHeight / pageHeight))
 
-        let printInfo = NSPrintInfo()
-        printInfo.paperSize = NSSize(width: pageWidth, height: pageHeight)
-        printInfo.topMargin = 0
-        printInfo.bottomMargin = 0
-        printInfo.leftMargin = 0
-        printInfo.rightMargin = 0
-        printInfo.horizontalPagination = .fit
-        printInfo.verticalPagination = .automatic
-        printInfo.isHorizontallyCentered = false
-        printInfo.isVerticallyCentered = false
-        printInfo.jobDisposition = .save
-        printInfo.dictionary()[NSPrintInfo.AttributeKey.jobSavingURL] = saveURL as NSURL
+        let pdfDocument = PDFDocument()
 
-        let printOperation = NSPrintOperation(view: hostingView, printInfo: printInfo)
-        printOperation.showsPrintPanel = false
-        printOperation.showsProgressPanel = false
+        let topPadding: CGFloat = 20 // ou ajuste à 25, 30, etc. si besoin
 
-        _ = printOperation.run()
-        
+        for i in 0..<pageCount {
+            let offsetY = CGFloat(i) * pageHeight
+
+            let pagedView = A4SheetView(
+                selectedClient: $selectedClient,
+                quoteArticles: $quoteArticles,
+                clientProjectAddress: $clientProjectAddress,
+                projectName: $projectName,
+                companyInfo: $companyInfo,
+                showingClientSelection: .constant(false),
+                showingArticleSelection: .constant(false),
+                devisNumber: $devisNumber,
+                sousTotal: $sousTotal,
+                remiseAmount: $remiseAmount,
+                remiseIsPercentage: $remiseIsPercentage,
+                remiseValue: $remiseValue
+            )
+            .environment(\.isPrinting, true)
+            .frame(width: pageWidth, height: totalHeight, alignment: .top)
+            .offset(y: -offsetY)
+            .clipped()
+
+            let clippedPage = ZStack {
+                pagedView
+            }
+            .frame(width: pageWidth, height: pageHeight)
+            .background(Color.red.opacity(0.1)) // TEMP
+
+            .clipped()
+
+            let hostingView = NSHostingView(rootView: clippedPage)
+            hostingView.frame = CGRect(x: 0, y: 0, width: pageWidth, height: pageHeight)
+
+            let pdfData = hostingView.dataWithPDF(inside: hostingView.bounds)
+            if let page = PDFDocument(data: pdfData)?.page(at: 0) {
+                pdfDocument.insert(page, at: i)
+            }
+        }
+
+        pdfDocument.write(to: saveURL)
     }
 }
 

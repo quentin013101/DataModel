@@ -22,6 +22,7 @@ struct NewQuoteView: View {
     @State private var remiseIsPercentage: Bool = false
     @State private var remiseValue: Double = 0.0
     @State private var documentHeight: CGFloat = 842
+    @State private var signatureBlockHeight: CGFloat = 0
 
     init() {
         self.companyInfo = CompanyInfo.loadFromUserDefaults()
@@ -51,7 +52,7 @@ struct NewQuoteView: View {
                     let scaleFactor = geo.size.height / 842
                     let scaledWidth = 595 * scaleFactor
 
-                    ScrollView(.vertical) {
+                    ScrollView(.vertical, showsIndicators: false) {
                         VStack {
                             A4SheetView(
                                 selectedClient: $selectedClient,
@@ -62,6 +63,7 @@ struct NewQuoteView: View {
                                 showingClientSelection: $showingClientSelection,
                                 showingArticleSelection: $showingArticleSelection,
                                 devisNumber: $devisNumber,
+                                signatureBlockHeight: $signatureBlockHeight,
                                 sousTotal: $sousTotal,
                                 remiseAmount: $remiseAmount,
                                 remiseIsPercentage: $remiseIsPercentage,
@@ -153,56 +155,60 @@ struct NewQuoteView: View {
 
         panel.begin { response in
             if response == .OK, let url = panel.url {
-                let pdfView = A4SheetView(
-                    selectedClient: $selectedClient,
-                    quoteArticles: $quoteArticles,
-                    clientProjectAddress: $clientProjectAddress,
-                    projectName: $projectName,
-                    companyInfo: $companyInfo,
-                    showingClientSelection: .constant(false),
-                    showingArticleSelection: .constant(false),
-                    devisNumber: $devisNumber,
-                    sousTotal: $sousTotal,
-                    remiseAmount: $remiseAmount,
-                    remiseIsPercentage: $remiseIsPercentage,
-                    remiseValue: $remiseValue
-                )
-                .environment(\.isPrinting, true)
-                .frame(width: 595)
-                .fixedSize(horizontal: false, vertical: true)
-
-                let hostingView = NSHostingView(rootView: pdfView)
-                let contentSize = hostingView.fittingSize
-                hostingView.frame = CGRect(origin: .zero, size: contentSize)
-
-                // ✅ View container fixe largeur 595
-                let container = NSView(frame: CGRect(x: 0, y: 0, width: 595, height: contentSize.height))
-                hostingView.setFrameOrigin(NSPoint(x: 0, y: 0)) // 👈 Important !
-                container.addSubview(hostingView)
-
-                let printInfo = NSPrintInfo()
-                printInfo.jobDisposition = .save
-                printInfo.paperSize = NSSize(width: 595, height: 842)
-                printInfo.topMargin = 0
-                printInfo.bottomMargin = 0
-                printInfo.leftMargin = 0
-                printInfo.rightMargin = 0
-                printInfo.verticalPagination = .automatic
-                printInfo.horizontalPagination = .automatic
-                printInfo.isHorizontallyCentered = false
-                printInfo.isVerticallyCentered = false
-                printInfo.dictionary()[NSPrintInfo.AttributeKey(rawValue: "NSJobSavingURL")] = url as NSURL
-
-                let printOp = NSPrintOperation(view: container, printInfo: printInfo)
-                printOp.showsPrintPanel = false
-                printOp.showsProgressPanel = false
-                printOp.run()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    ensureSignatureBlockFits()
+                    renderA4SheetToPDF(saveURL: url)
+                }
             }
         }
     }
 
     func previewPDF() {
-        let pdfView = A4SheetView(
+        let tmpURL = FileManager.default.temporaryDirectory.appendingPathComponent("PreviewQuote.pdf")
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            ensureSignatureBlockFits()
+            renderA4SheetToPDF(saveURL: tmpURL)
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                NSWorkspace.shared.open(tmpURL)
+            }
+        }
+    }
+    func ensureSignatureBlockFits() {
+        guard signatureBlockHeight > 0 else {
+            print("⚠️ signatureBlockHeight pas encore mesuré")
+            return
+        }
+
+        let pageHeight: CGFloat = 842
+        let headerHeight: CGFloat = 270
+        let articleRowHeight: CGFloat = 22
+
+        let totalArticleHeight = CGFloat(quoteArticles.count) * articleRowHeight
+        let totalBeforeSignatures = headerHeight + totalArticleHeight
+
+        let spaceRemaining = pageHeight - (totalBeforeSignatures.truncatingRemainder(dividingBy: pageHeight))
+
+        print("🧮 Remaining space: \(spaceRemaining) — Signature block: \(signatureBlockHeight + 32)")
+
+        if spaceRemaining < (signatureBlockHeight + 32) {
+            if quoteArticles.last?.lineType != .pageBreak {
+                print("🚨 Pas assez de place, ajout d’un saut de page")
+
+                if let lastCategoryIndex = quoteArticles.lastIndex(where: { $0.lineType == .category }) {
+                    quoteArticles.insert(QuoteArticle(lineType: .pageBreak), at: lastCategoryIndex)
+                } else {
+                    quoteArticles.append(QuoteArticle(lineType: .pageBreak))
+                }
+            }
+        }
+    }
+    func renderA4SheetToPDF(saveURL: URL) {
+        let pageWidth: CGFloat = 595
+        let pageHeight: CGFloat = 842
+
+        let rootView = A4SheetView(
             selectedClient: $selectedClient,
             quoteArticles: $quoteArticles,
             clientProjectAddress: $clientProjectAddress,
@@ -211,47 +217,38 @@ struct NewQuoteView: View {
             showingClientSelection: .constant(false),
             showingArticleSelection: .constant(false),
             devisNumber: $devisNumber,
+            signatureBlockHeight: $signatureBlockHeight,
             sousTotal: $sousTotal,
             remiseAmount: $remiseAmount,
             remiseIsPercentage: $remiseIsPercentage,
             remiseValue: $remiseValue
         )
         .environment(\.isPrinting, true)
-        .frame(width: 595)
+        .frame(width: pageWidth)
         .fixedSize(horizontal: false, vertical: true)
 
-        let hostingView = NSHostingView(rootView: pdfView)
-        let contentSize = hostingView.fittingSize
-        hostingView.frame = CGRect(origin: .zero, size: contentSize)
-
-        let container = NSView(frame: CGRect(x: 0, y: 0, width: 595, height: contentSize.height))
-        hostingView.setFrameOrigin(NSPoint(x: 0, y: 0))
-        container.addSubview(hostingView)
-
-        let tmpURL = FileManager.default.temporaryDirectory.appendingPathComponent("PreviewQuote.pdf")
+        let hostingView = NSHostingView(rootView: rootView)
+        hostingView.frame.size = hostingView.fittingSize
 
         let printInfo = NSPrintInfo()
-        printInfo.jobDisposition = .save
-        printInfo.paperSize = NSSize(width: 595, height: 842)
+        printInfo.paperSize = NSSize(width: pageWidth, height: pageHeight)
         printInfo.topMargin = 0
         printInfo.bottomMargin = 0
         printInfo.leftMargin = 0
         printInfo.rightMargin = 0
+        printInfo.horizontalPagination = .fit
         printInfo.verticalPagination = .automatic
-        printInfo.horizontalPagination = .automatic
         printInfo.isHorizontallyCentered = false
         printInfo.isVerticallyCentered = false
-        printInfo.dictionary()[NSPrintInfo.AttributeKey(rawValue: "NSJobSavingURL")] = tmpURL as NSURL
+        printInfo.jobDisposition = .save
+        printInfo.dictionary()[NSPrintInfo.AttributeKey.jobSavingURL] = saveURL as NSURL
 
-        let printOp = NSPrintOperation(view: container, printInfo: printInfo)
-        printOp.showsPrintPanel = false
-        printOp.showsProgressPanel = false
+        let printOperation = NSPrintOperation(view: hostingView, printInfo: printInfo)
+        printOperation.showsPrintPanel = false
+        printOperation.showsProgressPanel = false
 
-        if printOp.run() {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                NSWorkspace.shared.open(tmpURL)
-            }
-        }
+        _ = printOperation.run()
+        
     }
 }
 
