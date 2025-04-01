@@ -33,10 +33,13 @@
 		924A97182D8096C3004CE3E7 /* Exceptions for "DataModel" folder in "DataModel" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				gestionDevisFact/QuoteSaver.swift,
 				PDF/NSImageViewRepresentable.swift.old,
 				Quote/A4SheetView.old,
+				Quote/ArticleSelectionView.old,
 				"Quote/NewQuoteView 2.swift.test",
 				Quote/NewQuoteView.old,
+				Quote/QuoteArticle.old,
 				Quote/ScalableA4SheetView.swift.old,
 				Quote/TableColumns.old,
 			);
@@ -45,14 +48,23 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+		9242CBEF2D9BDD9B007283AD /* Exceptions for "DataModel" folder in "Copy Bundle Resources" phase from "DataModel" target */ = {
+			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
+			buildPhase = 920ABC722D70D69F00D760E4 /* Resources */;
+			membershipExceptions = (
+				gestionDevisFact/QuoteSaver.swift,
+			);
+		};
 		924A97192D8096C3004CE3E7 /* Exceptions for "DataModel" folder in "Compile Sources" phase from "DataModel" target */ = {
 			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
 			buildPhase = 920ABC702D70D69F00D760E4 /* Sources */;
 			membershipExceptions = (
 				PDF/NSImageViewRepresentable.swift.old,
 				Quote/A4SheetView.old,
+				Quote/ArticleSelectionView.old,
 				"Quote/NewQuoteView 2.swift.test",
 				Quote/NewQuoteView.old,
+				Quote/QuoteArticle.old,
 				Quote/ScalableA4SheetView.swift.old,
 				Quote/TableColumns.old,
 			);
@@ -65,6 +77,7 @@
 			exceptions = (
 				924A97182D8096C3004CE3E7 /* Exceptions for "DataModel" folder in "DataModel" target */,
 				924A97192D8096C3004CE3E7 /* Exceptions for "DataModel" folder in "Compile Sources" phase from "DataModel" target */,
+				9242CBEF2D9BDD9B007283AD /* Exceptions for "DataModel" folder in "Copy Bundle Resources" phase from "DataModel" target */,
 			);
 			path = DataModel;
 			sourceTree = "<group>";

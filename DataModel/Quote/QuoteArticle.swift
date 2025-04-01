@@ -1,84 +1,53 @@
+import Foundation
 import SwiftUI
 
-/// Types de lignes possibles
-enum QuoteLineType: String, Codable {
+enum QuoteArticleType: String, Codable {
     case article
     case category
     case pageBreak
 }
 
-/// Représente une ligne dans le devis
-struct QuoteArticle: Identifiable, Equatable {
+/// Représente une ligne dans le devis (article, catégorie ou saut de page)
+final class QuoteArticle: ObservableObject, Identifiable, Codable, Equatable {
+    
+    // MARK: - Propriétés principales modifiables
+    var designation: String
+    var quantity: Int
+    var unit: String
+    var unitPrice: Double
+    var lineType: QuoteArticleType
+    var comment: String?
+    
+    // MARK: - Identifiant unique
     let id: UUID
 
-    /// Pour un article classique (optionnel, car une catégorie ou un saut de page n'ont pas d'article)
-    var article: Article?
-
-    /// Quantité (pertinent seulement si c'est un article)
-    var quantity: Int16
-    var unit: String?
-
-    /// Prix unitaire (on peut choisir de le stocker ici, ou se baser sur article?.price)
-    var unitPrice: Double
-
-    /// Type de ligne
-    var lineType: QuoteLineType
-
-    /// Commentaire (pertinent pour une catégorie, ou autre usage)
-    var comment: String?
-
+    // MARK: - Init
     init(
         id: UUID = UUID(),
-        article: Article? = nil,
-        quantity: Int16 = 1,
+        designation: String = "",
+        quantity: Int = 1,
+        unit: String = "u",
         unitPrice: Double = 0.0,
-        lineType: QuoteLineType = .article,
-        comment: String? = nil,
-        unit: String? = nil
+        lineType: QuoteArticleType = .article,
+        comment: String? = nil
     ) {
         self.id = id
-        self.article = article
+        self.designation = designation
         self.quantity = quantity
+        self.unit = unit
         self.unitPrice = unitPrice
         self.lineType = lineType
         self.comment = comment
-        if let art = article {
-            self.unit = art.unit   // ex: "m²"
-        } else {
-            self.unit = nil
-        }
     }
 
-    // Pour comparer deux QuoteArticle (nécessaire si on veut qu'ils soient Equatable)
+    // MARK: - Equatable
     static func == (lhs: QuoteArticle, rhs: QuoteArticle) -> Bool {
-        lhs.id == rhs.id
-        && lhs.quantity == rhs.quantity
-        && lhs.unitPrice == rhs.unitPrice
-        && lhs.lineType == rhs.lineType
-        && lhs.comment == rhs.comment
-        && lhs.unit == rhs.unit
-        // Comparez aussi l'article si nécessaire (ex: en comparant l'objectID si c'est CoreData)
+        return lhs.id == rhs.id &&
+               lhs.designation == rhs.designation &&
+               lhs.quantity == rhs.quantity &&
+               lhs.unit == rhs.unit &&
+               lhs.unitPrice == rhs.unitPrice &&
+               lhs.lineType == rhs.lineType &&
+               lhs.comment == rhs.comment
     }
-}
-
-extension QuoteArticle {
-    /// Propriété calculée pour obtenir le total d'une ligne.
-    /// Pour un article : quantité * prix unitaire.
-    /// Pour une remise : on retourne le prix unitaire (qui doit être négatif).
-    var total: Double {
-        switch lineType {
-        case .article:
-            return Double(quantity) * unitPrice
-        default:
-            return 0.0
-        }
-    }
-    
-    /// Initialiseur spécialisé pour une ligne de remise.
-    /// Le montant fourni (discountAmount) est converti en valeur négative.
-//    init(discountAmount: Double) { ❌ À SUPPRIMER
-//        self.init(lineType: .remise, comment: "Remise")
-//        self.unitPrice = -abs(discountAmount)
-//        self.quantity = 1
-//    }
 }

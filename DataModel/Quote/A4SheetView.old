@@ -4,6 +4,11 @@ import PDFKit
 
 
 struct A4SheetView: View {
+    let showHeader: Bool
+    let showFooter: Bool
+    let showSignature: Bool
+    let globalQuoteArticles: [QuoteArticle]
+    
     // let companyInfo: CompanyInfo
     
     @Binding var selectedClient: Contact?
@@ -63,34 +68,44 @@ struct A4SheetView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            headerSection
+            if showHeader {
+                headerSection
+
+            }
             projectNameField
             articlesSection
             
-            VStack(spacing: 0) {
-                signatureSection
-                    .padding(.top, 16)
+            if showSignature {
+                VStack(spacing: 0) {
+                    signatureSection
+                        .padding(.top, 16)
 
-                clientProSignatureSection
-                    .padding(.top, 16)
-            }
-            .background(
-                GeometryReader { geo in
-                    Color.clear
-                        .onAppear {
-                            signatureBlockHeight = geo.size.height
-                            print("📏 Signature block height: \(signatureBlockHeight)")
-                        }
-                        .onChange(of: geo.size.height) { newHeight in
-                            signatureBlockHeight = newHeight
-                        }
+                    clientProSignatureSection
+                        .padding(.top, 16)
                 }
-            )
+                .background(
+                    GeometryReader { geo in
+                        Color.clear
+                            .onAppear {
+                                signatureBlockHeight = geo.size.height
+                                print("📏 Signature block height: \(signatureBlockHeight)")
+                            }
+                            .onChange(of: geo.size.height) { newHeight in
+                                signatureBlockHeight = newHeight
+                            }
+                    }
+                )
+            }
             
             Spacer(minLength: 0)
                 .layoutPriority(-1)
             
-            footerSection
+            if showFooter {
+            
+                footerSection
+
+            
+            }
         }
         .font(.system(size: 9))
         .frame(width: 595, alignment: .top)
@@ -219,7 +234,8 @@ struct A4SheetView: View {
     
     private var formattedToday: String {
         let formatter = DateFormatter()
-        formatter.dateStyle = .medium
+        formatter.locale = Locale(identifier: "fr_FR")
+        formatter.dateStyle = .long
         return formatter.string(from: Date())
     }
     
@@ -251,11 +267,9 @@ struct A4SheetView: View {
 
                 if !quoteArticles.isEmpty {
                     ForEach(quoteArticles.indices, id: \.self) { i in
-                        let numberString = lineNumber(for: i)
-
                         DevisLineRowHoverArrows(
                             index: i,
-                            lineNumber: numberString,
+                            computeLineNumber: lineNumber, // on passe la fonction
                             quoteArticle: $quoteArticles[i],
                             isHovering: (arrowIndex == i),
                             highlight: (highlightIndex == i),
@@ -269,6 +283,7 @@ struct A4SheetView: View {
                             onInsertLineAboveCategory: { insertCategoryAbove(i) },
                             onInsertLineAbovePrestation: { insertPrestationAbove(i) },
                             onInsertPageBreakBelow: { insertPageBreakBelow(i) },
+                            onInsertPageBreakAbove: { insertPageBreakAbove(i) },
                             onDelete: { confirmDelete(index: i) },
                             computeCategoryTotal: { _ in computeCategoryTotal(startIndex: i) }
                         )
@@ -474,27 +489,32 @@ struct A4SheetView: View {
                 ZStack(alignment: .topLeading) {
                     PDFBoxView(backgroundColor: NSColor.gray.withAlphaComponent(0.5), cornerRadius: 8)
                         .frame(width: 240, height: 90)
-//                    RoundedRectangle(cornerRadius: 4)
-//                        .fill(Color(white: 0.9))
-//                        .frame(width: 240, height: 90)
                     Text("Mention manuscrite et datée :\n« Devis reçu avant l’exécution des travaux. Bon pour travaux. ")
                         .font(.system(size: 7))
                         .foregroundColor(.gray)
                         .padding(4)
                 }
             }
-            
-            Spacer()
-            
-            VStack(alignment: .leading, spacing: 8) {
 
+            Spacer()
+
+            VStack(alignment: .leading, spacing: 8) {
                 Text(companyInfo.companyName)
                     .font(.system(size: 9).bold())
-                PDFBoxView(backgroundColor: NSColor.gray.withAlphaComponent(0.5), cornerRadius: 8)
-                    .frame(width: 240, height: 90)
-//                RoundedRectangle(cornerRadius: 4)
-//                    .fill(Color(white: 0.9))
-//                    .frame(width: 240, height: 80)
+                
+                ZStack {
+                    PDFBoxView(backgroundColor: NSColor.gray.withAlphaComponent(0.5), cornerRadius: 8)
+                        .frame(width: 240, height: 90)
+
+                    if let data = companyInfo.signatureData,
+                       let nsImage = NSImage(data: data) {
+                        Image(nsImage: nsImage)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 180, height: 60)
+                            .padding(8)
+                    }
+                }
             }
         }
         .padding(.horizontal, 16)
@@ -540,46 +560,93 @@ struct A4SheetView: View {
 
     // MARK: - Logique articles
     
+//    private func lineNumber(for index: Int) -> String {
+//        var categoryCount = 0
+//        var noCategoryArticleCount = 0
+//        var articleCountInCategory = 0
+//        for i in 0...index {
+//            let line = quoteArticles[i]
+//            switch line.lineType {
+//            case .category:
+//                categoryCount += 1
+//                articleCountInCategory = 0
+//            case .article:
+//                if categoryCount == 0 {
+//                    noCategoryArticleCount += 1
+//                } else {
+//                    articleCountInCategory += 1
+//                }
+//            case .pageBreak:
+//                break
+//          //  case .remise:
+//                // Vous pouvez décider de ne rien faire ou de gérer différemment
+//                break
+//            }
+//        }
+//        let currentLine = quoteArticles[index]
+//        switch currentLine.lineType {
+//        case .category:
+//            return "\(categoryCount)"
+//        case .article:
+//            if categoryCount == 0 {
+//                return "\(noCategoryArticleCount)"
+//            } else {
+//                return "\(categoryCount).\(articleCountInCategory)"
+//            }
+//        //case .pageBreak, .remise:
+//            return ""
+//        case .pageBreak:
+//            return ""
+//        default: // ✅ Ajout d'un default pour éviter toute future erreur
+//            return ""
+//        }
+//    }
     private func lineNumber(for index: Int) -> String {
-        var categoryCount = 0
-        var noCategoryArticleCount = 0
-        var articleCountInCategory = 0
-        for i in 0...index {
-            let line = quoteArticles[i]
+        let currentLine = quoteArticles[index]
+        
+        guard let globalIndex = globalQuoteArticles.firstIndex(where: { $0.id == currentLine.id }) else {
+            return ""
+        }
+
+        var globalCounter = 0
+        var currentCategoryNumber: Int? = nil
+        var articleInCategoryCounter = 0
+
+        for i in 0...globalIndex {
+            let line = globalQuoteArticles[i]
+
             switch line.lineType {
             case .category:
-                categoryCount += 1
-                articleCountInCategory = 0
+                globalCounter += 1
+                currentCategoryNumber = globalCounter
+                articleInCategoryCounter = 0
             case .article:
-                if categoryCount == 0 {
-                    noCategoryArticleCount += 1
+                if currentCategoryNumber == nil {
+                    globalCounter += 1
                 } else {
-                    articleCountInCategory += 1
+                    articleInCategoryCounter += 1
                 }
-            case .pageBreak:
-                break
-          //  case .remise:
-                // Vous pouvez décider de ne rien faire ou de gérer différemment
+            default:
                 break
             }
-        }
-        let currentLine = quoteArticles[index]
-        switch currentLine.lineType {
-        case .category:
-            return "\(categoryCount)"
-        case .article:
-            if categoryCount == 0 {
-                return "\(noCategoryArticleCount)"
-            } else {
-                return "\(categoryCount).\(articleCountInCategory)"
+
+            if i == globalIndex {
+                switch currentLine.lineType {
+                case .category:
+                    return "\(globalCounter)"
+                case .article:
+                    if let cat = currentCategoryNumber {
+                        return "\(cat).\(articleInCategoryCounter)"
+                    } else {
+                        return "\(globalCounter)"
+                    }
+                default:
+                    return ""
+                }
             }
-        //case .pageBreak, .remise:
-            return ""
-        case .pageBreak:
-            return ""
-        default: // ✅ Ajout d'un default pour éviter toute future erreur
-            return ""
         }
+
+        return ""
     }
     
     // MARK: - Move up/down
@@ -624,6 +691,12 @@ struct A4SheetView: View {
         quoteArticles.insert(
             QuoteArticle(lineType: .pageBreak),
             at: index + 1
+        )
+    }
+    private func insertPageBreakAbove(_ index: Int) {
+        quoteArticles.insert(
+            QuoteArticle(lineType: .pageBreak),
+            at: index
         )
     }
     
@@ -700,7 +773,7 @@ struct A4SheetView: View {
         @Environment(\.isPrinting) private var isPrinting
 
         let index: Int
-        let lineNumber: String
+        let computeLineNumber: (Int) -> String
         private let allUnits = ["hr", "u", "m", "m²", "m3", "ml", "l", "kg", "forfait"]
         
         @Binding var quoteArticle: QuoteArticle
@@ -715,6 +788,7 @@ struct A4SheetView: View {
         var onInsertLineAboveCategory: () -> Void
         var onInsertLineAbovePrestation: () -> Void
         var onInsertPageBreakBelow: () -> Void
+        var onInsertPageBreakAbove: () -> Void
         var onDelete: () -> Void
         
         // Optionnel, si vous gérez les catégories
@@ -741,7 +815,10 @@ struct A4SheetView: View {
             }
             .contextMenu {
                 Button("Insérer Catégorie au-dessus") { onInsertLineAboveCategory() }
-                Button("Insérer Prestation au-dessus") { onInsertLineAbovePrestation() }
+                    Button("Insérer Prestation au-dessus") { onInsertLineAbovePrestation() }
+                Button("Insérer un saut de page au-dessus") {
+                    onInsertPageBreakAbove()
+                }
                 Divider()
                 Menu("Changer l’unité") {
                     ForEach(["hr", "u", "m", "m²", "m3", "ml", "l", "kg", "Forfait"], id: \.self) { possibleUnit in
@@ -785,7 +862,7 @@ struct A4SheetView: View {
                 HStack(spacing: 0) {
                     PDFBoxView(backgroundColor: NSColor.gray.withAlphaComponent(0.2))
                         .frame(width: 1, height: 22)
-                    Text(lineNumber)
+                    Text(computeLineNumber(index))
                         .frame(width: 37, alignment: .center)
                     PDFBoxView(backgroundColor: NSColor.gray.withAlphaComponent(0.2))
                         .frame(width: 1, height: 22)
@@ -838,7 +915,7 @@ struct A4SheetView: View {
                     }
                     .frame(height: 22)
                 } else {
-                    EmptyView() // 🧼 Pas d'espace en PDF
+                    EmptyView() // Ne génère rien du tout dans le PDF
                 }
             }
         }
@@ -854,7 +931,7 @@ struct A4SheetView: View {
                     PDFBoxView(backgroundColor: NSColor.gray.withAlphaComponent(0.2))
                         .frame(width: 1, height: 22)
 
-                    Text(lineNumber)
+                    Text(computeLineNumber(index))
                         .frame(width: 37, alignment: .center)
 
                     PDFBoxView(backgroundColor: NSColor.gray.withAlphaComponent(0.2))

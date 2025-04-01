@@ -5,6 +5,7 @@ struct ParametresView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var selectedImage: NSImage?
+    @State private var selectedSignature: NSImage?
     @State private var companyName = ""
     @State private var address = ""
     @State private var postalCode = ""
@@ -24,6 +25,9 @@ struct ParametresView: View {
     // MARK: - Constantes et Chemins
     private let logoFilename = "companyLogo.png"
     private let savePath: URL
+    
+    private let signatureFilename = "companySignature.png"
+    private let signaturePath: URL
 
     private let legalForms = ["EURL", "SARL", "SAS", "Auto-entrepreneur"]
     private let registrationTypes = ["RCS", "RM", "SIREN", "SIRET"]
@@ -35,6 +39,7 @@ struct ParametresView: View {
     init() {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
         savePath = appSupport.appendingPathComponent("MonApp/\(logoFilename)")
+        signaturePath = appSupport.appendingPathComponent("MonApp/\(signatureFilename)")
     }
 
     // MARK: - Vue Principale
@@ -62,27 +67,48 @@ struct ParametresView: View {
                     }
                 }
 
-                // Section Logo
-                Section(header: Text("📌 Logo de l'entreprise").frame(maxWidth: .infinity, alignment: .center)) {
-                    VStack(spacing: 10) {
-                        if let image = selectedImage {
-                            Image(nsImage: image)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(height: 150)
-                                .border(Color.gray, width: 1)
-                        } else {
-                            Text("Aucun logo sélectionné")
-                                .foregroundColor(.gray)
-                        }
-                        HStack(spacing: 20) {
+                // Section Logo + signature
+                Section(header: Text("📌 Logo et Signature").frame(maxWidth: .infinity, alignment: .center)) {
+                    HStack(alignment: .top, spacing: 40) {
+                        // 🔹 LOGO
+                        VStack(spacing: 10) {
+                            Text("Logo").bold()
+                            if let image = selectedImage {
+                                Image(nsImage: image)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 120, height: 120)
+                                    .border(Color.gray, width: 1)
+                            } else {
+                                Text("Aucun logo")
+                                    .foregroundColor(.gray)
+                            }
                             Button("Choisir un fichier") { openFilePicker() }
                             Button("Supprimer le logo") { removeLogo() }
                                 .foregroundColor(.red)
                         }
-                        .frame(maxWidth: .infinity, alignment: .center)
+
+                        // 🔹 SIGNATURE
+                        VStack(spacing: 10) {
+                            Text("Signature").bold()
+                            if let sig = selectedSignature {
+                                Image(nsImage: sig)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 120, height: 120)
+                                    .border(Color.gray, width: 1)
+                            } else {
+                                Text("Aucune signature")
+                                    .foregroundColor(.gray)
+                            }
+                            Button("Choisir une signature") { openSignaturePicker() }
+                            Button("Supprimer la signature") { removeSignature() }
+                                .foregroundColor(.red)
+                        }
                     }
+                    .frame(maxWidth: .infinity, alignment: .center)
                 }
+
 
                 // Section Pied de page
                 Section(header: Text("📜 Pied de page").frame(maxWidth: .infinity, alignment: .center)) {
@@ -212,6 +238,11 @@ struct ParametresView: View {
            let image = NSImage(data: imageData) {
             selectedImage = image
         }
+        if FileManager.default.fileExists(atPath: signaturePath.path),
+           let imageData = try? Data(contentsOf: signaturePath),
+           let image = NSImage(data: imageData) {
+            selectedSignature = image
+        }
     }
 
     /// Sauvegarde l'ensemble des paramètres dans UserDefaults.
@@ -248,6 +279,41 @@ struct ParametresView: View {
             }
         } catch {
             print("❌ Erreur lors de la suppression du logo : \(error)")
+        }
+    }
+    private func openSignaturePicker() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.png, .jpeg, .tiff]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+
+        if panel.runModal() == .OK, let url = panel.url {
+            loadSignature(from: url)
+        }
+    }
+
+    private func loadSignature(from url: URL) {
+        do {
+            let data = try Data(contentsOf: url)
+            if let image = NSImage(data: data) {
+                selectedSignature = image
+                try? FileManager.default.createDirectory(at: signaturePath.deletingLastPathComponent(), withIntermediateDirectories: true)
+                try data.write(to: signaturePath)
+            }
+        } catch {
+            print("❌ Erreur : Impossible de lire la signature - \(error)")
+        }
+    }
+
+    private func removeSignature() {
+        do {
+            if FileManager.default.fileExists(atPath: signaturePath.path) {
+                try FileManager.default.removeItem(at: signaturePath)
+                selectedSignature = nil
+                print("✅ Signature supprimée")
+            }
+        } catch {
+            print("❌ Erreur lors de la suppression de la signature : \(error)")
         }
     }
 }

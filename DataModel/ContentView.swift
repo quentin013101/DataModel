@@ -2,6 +2,10 @@ import SwiftUI
 
 struct ContentView: View {
     @Binding var selectedTab: String
+    
+    @State private var showNewQuoteView = false // 👈 Vue contrôlée
+    @State private var quoteToEdit: QuoteEntity? = nil
+
 
     var body: some View {
         NavigationSplitView {
@@ -13,7 +17,9 @@ struct ContentView: View {
             case "articles":
                 ArticleListView(selectedTab: $selectedTab)
             case "devis":
-                NewQuoteView()
+                NewQuoteView(existingQuote: quoteToEdit, selectedTab: $selectedTab)
+            case "devisFactures":
+                QuoteListView(selectedTab: $selectedTab, quoteToEdit: $quoteToEdit)
             default:
                 Text("Sélectionnez un élément")
                     .foregroundColor(.blue)

@@ -12,6 +12,7 @@ import SwiftUI
 /// que vous saisissez dans `SettingsView`.
 struct CompanyInfo {
     var logoData: Data?             // Logo de l'entreprise
+    var signatureData: Data? // 🆕 Signature image ajoutée
     var companyName: String
     var artisanName: String
     var addressLine1: String     // Ex: "6 chemin du boudard"
@@ -64,8 +65,16 @@ extension CompanyInfo {
             logoData = data
         }
 
+        let signaturePath = appSupport.appendingPathComponent("MonApp/companySignature.png")
+        var signatureData: Data? = nil
+        if FileManager.default.fileExists(atPath: signaturePath.path),
+           let data = try? Data(contentsOf: signaturePath) {
+            signatureData = data
+        }
+        
         return CompanyInfo(
             logoData: logoData,
+            signatureData: signatureData,
             companyName: companyName,
             artisanName: artisanName,
             addressLine1: addressLine1,

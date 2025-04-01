@@ -6,10 +6,10 @@ struct ArticleSelectionView: View {
     // On ne force plus la fermeture au moindre clic
     // @Environment(\.dismiss) private var dismiss
 
-    var onArticleSelected: (Article, Int16) -> Void
+    var onArticleSelected: (Article, Int16) -> Void  // Ajoute la quantité
+
     @State private var searchText = ""
     @State private var showingAddArticle = false
-    @State private var quantity: Int = 1 
 //    @State private var selectedArticle: Article?
 //    @State private var selectedQuantity: Int16 = 1
 //    @State private var showQuantityAlert = false
@@ -37,13 +37,13 @@ struct ArticleSelectionView: View {
             } else {
                 List(filteredArticles, id: \.self) { article in
                     Button(action: {
-                        print("➡️ Article sélectionné : \(article.name ?? "-")")
+                        // On ajoute l'article avec une quantité par défaut (ex: 1)
                         onArticleSelected(article, 1)
                     }) {
                         HStack {
                             Text(article.name ?? "-")
                             Spacer()
-                            Text(String(format: "%.2f €", (article.price as? NSNumber)?.doubleValue ?? 0.0))
+                            Text(String(format: "%.2f €", article.price))
                             Text(article.unit ?? "-")
                         }
                         .padding()

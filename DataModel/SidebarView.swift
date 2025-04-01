@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SidebarView: View {
     @Binding var selectedTab: String
+    
     @State private var showingSettings = false // ✅ État pour afficher les paramètres
 
     var body: some View {
