@@ -531,13 +531,9 @@ struct A4SheetView: View {
                     PDFBoxView(backgroundColor: NSColor.gray.withAlphaComponent(0.5), cornerRadius: 8)
                         .frame(width: 240, height: 90)
 
-                    if let data = companyInfo.signatureData,
-                       let nsImage = NSImage(data: data) {
-                        Image(nsImage: nsImage)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 180, height: 60)
-                            .padding(8)
+                    if let signatureData = companyInfo.signatureData,
+                       let nsImage = NSImage(data: signatureData) {
+                        LogoImageView(imageData: companyInfo.signatureData, size: CGSize(width: 160, height: 80))
                     }
                 }
             }

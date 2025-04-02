@@ -46,3 +46,13 @@ extension QuoteEntity {
         )
     }
 }
+//extension QuoteEntity {
+//    var statusEnum: QuoteStatus {
+//        get {
+//            QuoteStatus(rawValue: status ?? "") ?? .draft
+//        }
+//        set {
+//            status = newValue.rawValue
+//        }
+//    }
+//}

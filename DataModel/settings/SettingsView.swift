@@ -44,116 +44,120 @@ struct ParametresView: View {
 
     // MARK: - Vue Principale
     var body: some View {
-        VStack(spacing: 15) {
-            // Titre centré
-            Text("Paramètres")
-                .font(.largeTitle)
-                .bold()
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.top)
-
-            Form {
-                // Section En-tête
-                Section(header: Text("📌 En-tête").frame(maxWidth: .infinity, alignment: .center)) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        formRow(label: "Nom de l'entreprise", text: $companyName)
-                        formRow(label: "Nom Prénom", text: $artisanName)
-                        formRow(label: "Adresse", text: $address)
-                        formRow(label: "Code Postal", text: $postalCode)
-                        formRow(label: "Ville", text: $city)
-                        formRow(label: "Téléphone", text: $phone)
-                        formRow(label: "Email", text: $email)
-                        formRow(label: "Site internet", text: $website)
-                    }
-                }
-
-                // Section Logo + signature
-                Section(header: Text("📌 Logo et Signature").frame(maxWidth: .infinity, alignment: .center)) {
-                    HStack(alignment: .top, spacing: 40) {
-                        // 🔹 LOGO
-                        VStack(spacing: 10) {
-                            Text("Logo").bold()
-                            if let image = selectedImage {
-                                Image(nsImage: image)
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(width: 120, height: 120)
-                                    .border(Color.gray, width: 1)
-                            } else {
-                                Text("Aucun logo")
-                                    .foregroundColor(.gray)
-                            }
-                            Button("Choisir un fichier") { openFilePicker() }
-                            Button("Supprimer le logo") { removeLogo() }
-                                .foregroundColor(.red)
-                        }
-
-                        // 🔹 SIGNATURE
-                        VStack(spacing: 10) {
-                            Text("Signature").bold()
-                            if let sig = selectedSignature {
-                                Image(nsImage: sig)
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(width: 120, height: 120)
-                                    .border(Color.gray, width: 1)
-                            } else {
-                                Text("Aucune signature")
-                                    .foregroundColor(.gray)
-                            }
-                            Button("Choisir une signature") { openSignaturePicker() }
-                            Button("Supprimer la signature") { removeSignature() }
-                                .foregroundColor(.red)
-                        }
-                    }
+        ScrollView {
+            VStack(spacing: 15) {
+                // Titre centré
+                Text("Paramètres")
+                    .font(.largeTitle)
+                    .bold()
                     .frame(maxWidth: .infinity, alignment: .center)
-                }
-
-
-                // Section Pied de page
-                Section(header: Text("📜 Pied de page").frame(maxWidth: .infinity, alignment: .center)) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        formPicker(label: "Forme juridique", selection: $legalForm, options: legalForms)
-                        formRow(label: "N° TVA", text: $vatNumber)
-                        formRow(label: "Code APE", text: $apeCode)
-                        formRow(label: "Capital Social (€)", text: $shareCapital)
-                        formRow(label: "IBAN", text: $iban)
-                        formPicker(label: "Immatriculation", selection: $registrationType, options: registrationTypes)
-                        // SIRET avec placeholder
-                        HStack {
-                            Text("SIRET").frame(width: labelWidth, alignment: .leading)
-                            TextField("SIRET", text: $siret)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .padding(.top)
+                
+                Form {
+                    // Section En-tête
+                    Section(header: Text("📌 En-tête").frame(maxWidth: .infinity, alignment: .center)) {
+                        VStack(alignment: .leading, spacing: 10) {
+                            formRow(label: "Nom de l'entreprise", text: $companyName)
+                            formRow(label: "Nom Prénom", text: $artisanName)
+                            formRow(label: "Adresse", text: $address)
+                            formRow(label: "Code Postal", text: $postalCode)
+                            formRow(label: "Ville", text: $city)
+                            formRow(label: "Téléphone", text: $phone)
+                            formRow(label: "Email", text: $email)
+                            formRow(label: "Site internet", text: $website)
+                        }
+                    }
+                    
+                    // Section Logo + signature
+                    Section(header: Text("📌 Logo et Signature").frame(maxWidth: .infinity, alignment: .center)) {
+                        HStack(alignment: .top, spacing: 40) {
+                            // 🔹 LOGO
+                            VStack(spacing: 10) {
+                                Text("Logo").bold()
+                                if let image = selectedImage {
+                                    Image(nsImage: image)
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 120, height: 120)
+                                        .border(Color.gray, width: 1)
+                                } else {
+                                    Text("Aucun logo")
+                                        .foregroundColor(.gray)
+                                }
+                                Button("Choisir un fichier") { openFilePicker() }
+                                Button("Supprimer le logo") { removeLogo() }
+                                    .foregroundColor(.red)
+                            }
+                            
+                            // 🔹 SIGNATURE
+                            VStack(spacing: 10) {
+                                Text("Signature").bold()
+                                if let sig = selectedSignature {
+                                    Image(nsImage: sig)
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 120, height: 120)
+                                        .border(Color.gray, width: 1)
+                                } else {
+                                    Text("Aucune signature")
+                                        .foregroundColor(.gray)
+                                }
+                                Button("Choisir une signature") { openSignaturePicker() }
+                                Button("Supprimer la signature") { removeSignature() }
+                                    .foregroundColor(.red)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .center)
+                    }
+                    
+                    
+                    // Section Pied de page
+                    Section(header: Text("📜 Pied de page").frame(maxWidth: .infinity, alignment: .center)) {
+                        VStack(alignment: .leading, spacing: 10) {
+                            formPicker(label: "Forme juridique", selection: $legalForm, options: legalForms)
+                            formRow(label: "N° TVA", text: $vatNumber)
+                            formRow(label: "Code APE", text: $apeCode)
+                            formRow(label: "Capital Social (€)", text: $shareCapital)
+                            formRow(label: "IBAN", text: $iban)
+                            formPicker(label: "Immatriculation", selection: $registrationType, options: registrationTypes)
+                            // SIRET avec placeholder
+                            HStack {
+                                Text("SIRET").frame(width: labelWidth, alignment: .leading)
+                                TextField("SIRET", text: $siret)
+                                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                            }
                         }
                     }
                 }
-            }
-            .padding(.horizontal)
-
-            // Boutons d'action centrés
-            HStack {
+                .padding(.horizontal)
                 
-                Button("Fermer") { dismiss() }
-                    .padding()
-                    .background(Color.gray.opacity(0.2))
-                    .cornerRadius(8)
-
-                Spacer()
-
-                Button(action : { saveSettings() })
-                { Text("Enregistrer") }
-                    .padding()
-                    .background(Color.blue)
-                    //.foregroundColor(.white)
-                    .buttonStyle(.borderedProminent)
-                    .cornerRadius(8)
+                // Boutons d'action centrés
+                HStack {
+                    
+                    Button("Fermer") { dismiss() }
+                        .padding()
+                        .background(Color.gray.opacity(0.2))
+                        .foregroundColor(.white)
+                        .buttonStyle(.borderless)
+                        .cornerRadius(8)
+                    
+                    Spacer()
+                    
+                    Button(action : { saveSettings() })
+                    { Text("Enregistrer") }
+                        .padding()
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .buttonStyle(.borderless)
+                        .cornerRadius(8)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal)
+            .padding()
+            .frame(width: 550)
+            .onAppear { loadSettings() }
         }
-        .padding()
-        .frame(width: 650)
-        .onAppear { loadSettings() }
     }
 
     // MARK: - Sous-vues

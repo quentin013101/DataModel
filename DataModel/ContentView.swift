@@ -18,8 +18,11 @@ struct ContentView: View {
                 ArticleListView(selectedTab: $selectedTab)
             case "devis":
                 NewQuoteView(existingQuote: quoteToEdit, selectedTab: $selectedTab)
+                    .onAppear {
+                        quoteToEdit = nil
+                    }
             case "devisFactures":
-                QuoteListView(selectedTab: $selectedTab, quoteToEdit: $quoteToEdit)
+                QuoteListView(selectedTab: $selectedTab, quoteToEdit: $quoteToEdit) // ✅ ajout manquant
             default:
                 Text("Sélectionnez un élément")
                     .foregroundColor(.blue)

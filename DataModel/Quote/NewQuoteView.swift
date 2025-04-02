@@ -10,7 +10,8 @@ struct NewQuoteView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.managedObjectContext) private var context
     @Environment(\.dismiss) var dismiss
-
+    
+    @State private var receivedQuoteToEdit: QuoteEntity? = nil
     @State private var companyInfo: CompanyInfo = CompanyInfo.loadFromUserDefaults()
     @State private var selectedClient: Contact?
     @State private var quoteArticles: [QuoteArticle] = [] {
@@ -74,15 +75,23 @@ struct NewQuoteView: View {
         VStack {
             HStack {
                 Button(action: exportPDF) {
-                    Image(systemName: "doc.richtext")
-                        .imageScale(.large)
+                    Label("Export PDF", systemImage: "square.and.arrow.up")
+                        .padding(6)
+                        .cornerRadius(8)
                 }
+
+                .buttonStyle(.borderedProminent)
+                .tint(.blue)
                 .help("Export PDF")
 
                 Button(action: previewPDF) {
-                    Image(systemName: "eye")
-                        .imageScale(.large)
+                    Label("Prévisualiser", systemImage: "eye.circle")
+                        .padding(6)
+                        .cornerRadius(8)
                 }
+
+                .buttonStyle(.borderedProminent)
+                .tint(.blue)
                 .help("Prévisualisation PDF")
                 Button {
                     saveQuoteToCoreData(
@@ -100,14 +109,21 @@ struct NewQuoteView: View {
                 } label: {
                     Label("Enregistrer", systemImage: "externaldrive.fill.badge.checkmark")
                         .padding(6)
-                        .background(Color.green.opacity(0.2))
+                    //.background(Color.green.opacity(0.2))
                         .cornerRadius(8)
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(.green)
-                Button("Annuler") {
-                    selectedTab = "devisFactures" // ⬅️ Revenir sans enregistrer
+                Button {
+                    selectedTab = "devisFactures"
+                } label: {
+                    Label("Annuler", systemImage: "xmark.circle")
+                        .padding(6)
+                        .cornerRadius(8)
                 }
+
+                .buttonStyle(.borderedProminent)
+                .tint(.red)
             }
             .padding()
 
@@ -205,7 +221,17 @@ struct NewQuoteView: View {
                 Text("Veuillez saisir le nom du projet.")
             }
             .onAppear {
-                if projectName.isEmpty {
+                // Écoute la notification quand un devis est sélectionné depuis QuoteListView
+                NotificationCenter.default.addObserver(forName: .editQuote, object: nil, queue: .main) { notification in
+                    if let quote = notification.object as? QuoteEntity {
+                        print("🛠️ Reçu un devis à éditer via Notification")
+                        receivedQuoteToEdit = quote
+                        loadQuote(from: quote)
+                    }
+                }
+
+                // Si on est en mode création (aucun devis chargé)
+                if existingQuote == nil && projectName.isEmpty {
                     showingProjectNameAlert = true
                 }
             }
@@ -436,6 +462,21 @@ struct NewQuoteView: View {
             print("❌ Erreur lors de la sauvegarde : \(error)")
         }
     }
+    func loadQuote(from quote: QuoteEntity) {
+        projectName = quote.projectName ?? ""
+        devisNumber = quote.devisNumber ?? ""
+        sousTotal = quote.sousTotal
+        remiseAmount = quote.remiseAmount
+        remiseIsPercentage = quote.remiseIsPercentage
+        remiseValue = quote.remiseValue
+
+        if let data = quote.quoteArticlesData,
+           let articles = try? JSONDecoder().decode([QuoteArticle].self, from: data) {
+            quoteArticles = articles
+        }
+
+        selectedClient = nil // ou charger le client s’il y a un ID
+    }
 
 }
 struct ClientSelectionWrapper: View {
@@ -467,7 +508,9 @@ struct ClientSelectionWrapper: View {
         }
     }
 }
-
+extension Notification.Name {
+    static let editQuote = Notification.Name("editQuote")
+}
 extension Contact {
     var fullName: String {
         let civ = civility ?? ""

@@ -46,6 +46,7 @@ struct SidebarView: View {
             .padding()
             .sheet(isPresented: $showingSettings) {
                 ParametresView()
+                    .frame(minWidth: 500, maxWidth: 700, minHeight: 400, maxHeight: 600)
             }
         }
         .frame(minWidth: 250)

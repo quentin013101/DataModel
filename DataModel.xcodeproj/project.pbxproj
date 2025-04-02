@@ -39,6 +39,7 @@
 				Quote/ArticleSelectionView.old,
 				"Quote/NewQuoteView 2.swift.test",
 				Quote/NewQuoteView.old,
+				Quote/Notifications.swift,
 				Quote/QuoteArticle.old,
 				Quote/ScalableA4SheetView.swift.old,
 				Quote/TableColumns.old,
@@ -53,6 +54,7 @@
 			buildPhase = 920ABC722D70D69F00D760E4 /* Resources */;
 			membershipExceptions = (
 				gestionDevisFact/QuoteSaver.swift,
+				Quote/Notifications.swift,
 			);
 		};
 		924A97192D8096C3004CE3E7 /* Exceptions for "DataModel" folder in "Compile Sources" phase from "DataModel" target */ = {
