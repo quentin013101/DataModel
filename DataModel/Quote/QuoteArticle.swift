@@ -51,3 +51,8 @@ final class QuoteArticle: ObservableObject, Identifiable, Codable, Equatable {
                lhs.comment == rhs.comment
     }
 }
+extension QuoteArticle {
+    var totalHT: Double {
+        Double(quantity) * unitPrice
+    }
+}

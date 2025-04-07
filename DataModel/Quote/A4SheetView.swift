@@ -1,6 +1,8 @@
 import SwiftUI
 import AppKit
 import PDFKit
+import CoreData
+
 
 
 struct A4SheetView: View {
@@ -34,6 +36,29 @@ struct A4SheetView: View {
     @Binding var remiseAmount: Double
     @Binding var remiseIsPercentage: Bool
     @Binding var remiseValue: Double
+    @State private var showingAcomptePopover = false
+    @State private var showingSoldePopover = false
+    @State private var acompteLabelDraft: String = ""
+    @State private var soldeLabelDraft: String = ""
+    @Binding var acompteText: String
+    @Binding var soldeText: String
+    @Binding var acomptePercentage: Double
+    @Binding var soldePercentage: Double
+    @State private var showAcompteTrash = false
+    @State private var showSoldeTrash = false
+    @Binding var showSoldeLine: Bool
+    @Binding var showAcompteLine: Bool
+    @State private var acompteTextDraft: String = ""
+    @State private var soldeTextDraft: String = ""
+    @State private var acomptePercentageDraft: Double = 30
+    @State private var soldePercentageDraft: Double = 70
+    @State private var soldeAmount: Double = 0.0
+    @Binding var acompteLabel: String
+    @Binding var soldeLabel: String
+
+    
+    
+
     @Environment(\.isPrinting) private var isPrinting
     
 
@@ -64,6 +89,11 @@ struct A4SheetView: View {
             i += 1
         }
         return quoteArticles.count
+    }
+    private var netAPayer: Double {
+        let total = sousTotal
+        let remise = remiseIsPercentage ? (total * remiseValue / 100) : remiseValue
+        return total - remise
     }
     
     var body: some View {
@@ -127,6 +157,18 @@ struct A4SheetView: View {
                 }
             }
             
+        }
+        .onChange(of: acompteLabel) { _ in
+            acompteText = "\(acompteLabel) \(Int(acomptePercentage)) %, soit \(String(format: "%.2f", netAPayer * acomptePercentage / 100)) €"
+        }
+        .onChange(of: acomptePercentage) { _ in
+            acompteText = "\(acompteLabel) \(Int(acomptePercentage)) %, soit \(String(format: "%.2f", netAPayer * acomptePercentage / 100)) €"
+        }
+        .onChange(of: soldeLabel) { _ in
+            soldeText = "\(soldeLabel) \(Int(soldePercentage)) %, soit \(String(format: "%.2f", netAPayer * soldePercentage / 100)) €"
+        }
+        .onChange(of: soldePercentage) { _ in
+            soldeText = "\(soldeLabel) \(Int(soldePercentage)) %, soit \(String(format: "%.2f", netAPayer * soldePercentage / 100)) €"
         }
     }
     
@@ -402,6 +444,91 @@ struct A4SheetView: View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Paiement en espèces, par chèque ou par virement bancaire.")
+                if showAcompteLine {
+                    Group {
+                        if isPrinting {
+                            Text("\(acompteLabel) \(Int(acomptePercentage)) %, soit \(String(format: "%.2f", netAPayer * acomptePercentage / 100)) €")
+                                .font(.system(size: 9))
+                        } else {
+                            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                                // Label modifiable
+                                TextField("", text: $acompteLabel)
+                                    .font(.system(size: 9))
+                                    .textFieldStyle(PlainTextFieldStyle())
+                                    .fixedSize()
+
+                                // Pourcentage
+                                Text("\(Int(acomptePercentage)) %")
+                                    .font(.system(size: 9))
+
+                                // Montant
+                                Text("soit \(String(format: "%.2f", netAPayer * acomptePercentage / 100)) €")
+                                    .font(.system(size: 9))
+                                    .foregroundColor(.secondary)
+
+                                // Corbeille
+                                if showAcompteTrash {
+                                    Button {
+                                        showAcompteLine = false
+                                        acompteLabel = "Acompte à la signature de"
+                                        acomptePercentage = 30
+                                        acompteText = ""
+                                    } label: {
+                                        Image(systemName: "trash")
+                                            .foregroundColor(.red)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .onHover { hovering in
+                                showAcompteTrash = hovering
+                            }
+                        }
+                    }
+                }
+                
+                if showSoldeLine {
+                    Group {
+                        if isPrinting {
+                            Text("\(soldeLabel) \(Int(soldePercentage)) %, soit \(String(format: "%.2f", netAPayer * soldePercentage / 100)) €")
+                                .font(.system(size: 9))
+                        } else {
+                            HStack(alignment: .firstTextBaseline, spacing: 4) {
+
+                                // Label modifiable
+                                TextField("", text: $soldeLabel)
+                                    .font(.system(size: 9))
+                                    .textFieldStyle(PlainTextFieldStyle())
+                                    .fixedSize()
+
+                                // Pourcentage
+                                Text("\(Int(soldePercentage)) %")
+                                    .font(.system(size: 9))
+
+                                // Montant
+                                Text("soit \(String(format: "%.2f", netAPayer * soldePercentage / 100)) €")
+                                    .font(.system(size: 9))
+                                    .foregroundColor(.secondary)
+                                
+                                if showSoldeTrash {
+                                    Button(action: {
+                                        showSoldeLine = false
+                                        soldeLabel = "Solde à la réception du chantier de"
+                                        soldePercentage = 70
+                                        soldeText = ""
+                                    }) {
+                                        Image(systemName: "trash")
+                                            .foregroundColor(.red)
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                }
+                            }
+                            .onHover { hovering in
+                                showSoldeTrash = hovering
+                            }
+                        }
+                    }
+                }
                 Text("Le montant peut être révisé en fonction du temps réel passé sur le chantier et de l’ajustement des fournitures et/ou de leurs prix.")
                 if companyInfo.legalForm.lowercased().contains("auto") {
                     Text("TVA non applicable, article 293 B du Code Général des Impôts.")
@@ -465,6 +592,77 @@ struct A4SheetView: View {
                     )
                 }
                 }
+                if !isPrinting {
+                    Menu("Acompte") {
+                        Button("Acompte à la signature") {
+                            acompteTextDraft = acompteText
+                            acomptePercentageDraft = acomptePercentage
+                            acompteLabelDraft = acompteLabel // ✅ AJOUT ICI
+                            showingAcomptePopover = true
+                        }
+                        Button("Solde à la réception") {
+                            soldeTextDraft = soldeText
+                            soldePercentageDraft = soldePercentage
+                            soldeLabelDraft = soldeLabel // ✅ AJOUT ICI
+                            showingSoldePopover = true
+                        }
+                    }
+                    .padding(.top, 8)
+                    .popover(isPresented: $showingAcomptePopover) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            AcomptePopoverView(
+                                title: "Acompte à la signature",
+                                percentage: $acomptePercentageDraft,
+                                netAPayer: netAPayer,
+                                resultText: $acompteTextDraft
+                            )
+
+                            HStack {
+                                Spacer()
+                                Button("Annuler") {
+                                    showingAcomptePopover = false
+                                }
+                                Button("Valider") {
+                                    acompteText = acompteTextDraft
+                                    acomptePercentage = acomptePercentageDraft
+                                    acompteLabel = acompteLabelDraft
+                                    showAcompteLine = true
+                                    showingAcomptePopover = false
+                                }
+                                .keyboardShortcut(.defaultAction)
+                            }
+                        }
+                        .padding()
+                        .frame(width: 300)
+                    }
+                    .popover(isPresented: $showingSoldePopover) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            AcomptePopoverView(
+                                title: "Solde à la réception",
+                                percentage: $soldePercentageDraft,
+                                netAPayer: netAPayer,
+                                resultText: $soldeTextDraft
+                            )
+
+                            HStack {
+                                Spacer()
+                                Button("Annuler") {
+                                    showingSoldePopover = false
+                                }
+                                Button("Valider") {
+                                    soldeText = soldeTextDraft
+                                    soldePercentage = soldePercentageDraft
+                                    soldeLabel = soldeLabelDraft
+                                    showSoldeLine = true
+                                    showingSoldePopover = false
+                                }
+                                .keyboardShortcut(.defaultAction)
+                            }
+                        }
+                        .padding()
+                        .frame(width: 300)
+                    }
+                }
             }
             //.padding()
             .frame(width: 200, alignment: .trailing)
@@ -480,6 +678,18 @@ struct A4SheetView: View {
         .padding(.horizontal, 16)
     }
     
+    struct EditableTextView: View {
+        @Binding var text: String
+        var body: some View {
+            TextEditor(text: $text)
+                .frame(height: 40)
+                .contextMenu {
+                    Button("Supprimer") {
+                        text = ""
+                    }
+                }
+        }
+    }
     // Exemple de structure de ligne de devis – adaptez-la à votre modèle si besoin
     struct InvoiceLine: Identifiable {
         let id = UUID()
@@ -577,6 +787,20 @@ struct A4SheetView: View {
             self.remiseAmount = remiseIsPercentage ? (sousTotal * remiseValue / 100) : remiseValue
         }
         return sousTotal - remiseAmount
+    }
+    func updateAcompteText() {
+        let amount = netAPayer * acomptePercentage / 100
+        if acompteText.isEmpty {
+            acompteText = "Acompte à la signature de"
+        }
+        // Le texte reste intact, seul le montant change (affiché séparément)
+    }
+
+    func updateSoldeText() {
+        let amount = netAPayer * soldePercentage / 100
+        if soldeText.isEmpty {
+            soldeText = "Solde à la réception du chantier de"
+        }
     }
 
     // MARK: - Logique articles
@@ -930,6 +1154,7 @@ struct A4SheetView: View {
                     TextField("Désignation", text: $quoteArticle.designation)
                         .textFieldStyle(.plain)
                         .frame(width: 270, alignment: .leading)
+                        .padding(.leading, 2)
                         .onChange(of: quoteArticle.designation) { new in
                             print("✏️ Nouvelle désignation : \(new)")
                         }

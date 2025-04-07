@@ -34,6 +34,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				gestionDevisFact/QuoteSaver.swift,
+				Invoice/InvoiceSheetView.old,
 				PDF/NSImageViewRepresentable.swift.old,
 				Quote/A4SheetView.old,
 				Quote/ArticleSelectionView.old,
@@ -61,6 +62,7 @@
 			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
 			buildPhase = 920ABC702D70D69F00D760E4 /* Sources */;
 			membershipExceptions = (
+				Invoice/InvoiceSheetView.old,
 				PDF/NSImageViewRepresentable.swift.old,
 				Quote/A4SheetView.old,
 				Quote/ArticleSelectionView.old,

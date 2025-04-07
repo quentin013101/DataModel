@@ -1,0 +1,113 @@
+"import SwiftUI
+
+struct InvoiceSheetView: View {
+    @ObservedObject var viewModel: InvoiceViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+
+            // 🔹 En-tête
+            HStack {
+                Text(viewModel.invoice.invoiceNumber ?? "Facture")
+                    .font(.title)
+                    .bold()
+                Spacer()
+                DatePicker("", selection: $viewModel.date, displayedComponents: .date)
+                    .labelsHidden()
+            }
+
+            Divider()
+
+            // 🔸 Texte explicatif
+            TextField("Texte explicatif…", text: $viewModel.note, axis: .vertical)
+                .textFieldStyle(.roundedBorder)
+
+            Divider()
+
+            // 🧾 Lignes modifiables
+            VStack(spacing: 8) {
+                ForEach(viewModel.articles.indices, id: \.self) { index in
+                    HStack {
+                        TextField("Titre", text: Binding(
+                            get: { viewModel.articles[index].designation },
+                            set: { viewModel.articles[index].designation = $0 }
+                        ))
+                        .textFieldStyle(.roundedBorder)
+
+                        Spacer()
+
+                        TextField("Montant HT", value: Binding(
+                            get: { viewModel.articles[index].unitPrice },
+                            set: { viewModel.articles[index].unitPrice = $0 }
+                        ), format: .number)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 100)
+
+                        // 🗑️ Suppression
+                        Button(role: .destructive) {
+                            viewModel.articles.remove(at: index)
+                        } label: {
+                            Image(systemName: "trash")
+                        }
+                    }
+                }
+
+                Button {
+                    viewModel.articles.append(QuoteArticle(
+                        designation: "",
+                        quantity: 1,
+                        unit: "u",
+                        unitPrice: 0.0,
+                        lineType: .article
+                    ))
+                }  label: {
+                    Label("Ajouter une ligne", systemImage: "plus")
+                        .foregroundColor(.green)
+                }
+                .padding(.top, 6)
+            }
+
+            Divider()
+
+            // 💶 Totaux
+            VStack(alignment: .trailing, spacing: 4) {
+                HStack {
+                    Spacer()
+                    Text("Total HT : \(viewModel.totalHT.formattedCurrency())")
+                }
+                HStack {
+                    Spacer()
+                    Text("TVA : \(viewModel.tva.formattedCurrency())")
+                }
+                HStack {
+                    Spacer()
+                    Text("Total TTC : \(viewModel.totalTTC.formattedCurrency())")
+                        .bold()
+                }
+            }
+
+            Spacer()
+        }
+        .padding()
+    }
+}
+// MARK: - Helpers
+
+extension Invoice {
+    var decodedQuoteArticles: [QuoteArticle] {
+        guard let data = invoiceArticlesData else { return [] }
+        let decoder = JSONDecoder()
+        return (try? decoder.decode([QuoteArticle].self, from: data)) ?? []
+    }
+}
+
+extension Double {
+    func formattedCurrency() -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "EUR"
+        formatter.maximumFractionDigits = 2
+        return formatter.string(from: NSNumber(value: self)) ?? "€0.00"
+    }
+}
+"

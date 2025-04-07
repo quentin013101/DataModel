@@ -23,7 +23,26 @@
         <attribute name="phoneNumber" optional="YES" attributeType="String"/>
         <attribute name="postalCode" optional="YES" attributeType="String"/>
         <attribute name="street" optional="YES" attributeType="String"/>
-        <relationship name="quote" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Quote" inverseName="client" inverseEntity="Quote"/>
+        <relationship name="quote" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Quote"/>
+    </entity>
+    <entity name="Invoice" representedClassName="Invoice" syncable="YES" codeGenerationType="class">
+        <attribute name="date" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="invoiceArticlesData" optional="YES" attributeType="Binary"/>
+        <attribute name="invoiceNote" optional="YES" attributeType="String"/>
+        <attribute name="invoiceNumber" optional="YES" attributeType="String"/>
+        <attribute name="isPartial" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="partialAmount" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="partialPercentage" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="paymentTerms" optional="YES" attributeType="String"/>
+        <attribute name="referenceQuoteDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="referenceQuoteNumber" optional="YES" attributeType="String"/>
+        <attribute name="referenceQuoteTotal" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="status" optional="YES" attributeType="String"/>
+        <attribute name="totalHT" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="totalTTC" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="tva" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <relationship name="quote" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="QuoteEntity" inverseName="invoices" inverseEntity="QuoteEntity"/>
     </entity>
     <entity name="Item" representedClassName="Item" syncable="YES" codeGenerationType="class">
         <attribute name="timestamp" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
@@ -34,9 +53,12 @@
         <attribute name="number" optional="YES" attributeType="String"/>
         <attribute name="title" optional="YES" attributeType="String"/>
         <attribute name="total" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
-        <relationship name="client" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Contact" inverseName="quote" inverseEntity="Contact"/>
+        <relationship name="invoices" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Invoice"/>
     </entity>
     <entity name="QuoteEntity" representedClassName="QuoteEntity" syncable="YES" codeGenerationType="class">
+        <attribute name="acompteLabel" optional="YES" attributeType="String"/>
+        <attribute name="acomptePercentage" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="acompteText" optional="YES" attributeType="String"/>
         <attribute name="clientCity" optional="YES" attributeType="String"/>
         <attribute name="clientName" optional="YES" attributeType="String"/>
         <attribute name="clientPostalCode" optional="YES" attributeType="String"/>
@@ -49,7 +71,13 @@
         <attribute name="remiseAmount" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
         <attribute name="remiseIsPercentage" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
         <attribute name="remiseValue" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="showAcompteLine" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="showSoldeLine" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="soldeLabel" optional="YES" attributeType="String"/>
+        <attribute name="soldePercentage" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="soldeText" optional="YES" attributeType="String"/>
         <attribute name="sousTotal" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
         <attribute name="status" optional="YES" attributeType="String" defaultValueString="Brouillon"/>
+        <relationship name="invoices" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Invoice" inverseName="quote" inverseEntity="Invoice"/>
     </entity>
 </model>

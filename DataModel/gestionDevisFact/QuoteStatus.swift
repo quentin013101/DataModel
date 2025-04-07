@@ -33,3 +33,40 @@ enum QuoteStatus: String, CaseIterable, Codable {
         }
     }
 }
+struct QuoteStatusMenu: View {
+    @Environment(\.managedObjectContext) private var viewContext
+    @ObservedObject var quote: QuoteEntity
+
+    var body: some View {
+        Menu {
+            ForEach(QuoteStatus.allCases, id: \.self) { status in
+                Button {
+                    quote.statusEnum = status
+                    try? viewContext.save()
+                } label: {
+                    Label(status.rawValue, systemImage: icon(for: status))
+                }
+            }
+        } label: {
+            Label {
+                Text(quote.statusEnum.rawValue)
+            } icon: {
+                Image(systemName: icon(for: quote.statusEnum))
+            }
+            .font(.caption)
+            .padding(6)
+            .background(quote.statusColor.opacity(0.2))
+            .foregroundColor(quote.statusColor)
+            .cornerRadius(6)
+        }
+    }
+
+    func icon(for status: QuoteStatus) -> String {
+        switch status {
+        case .brouillon: return "pencil"
+        case .finalisé:  return "checkmark.circle"
+        case .accepté:   return "checkmark.seal"
+        case .abandonné: return "xmark.circle"
+        }
+    }
+}
