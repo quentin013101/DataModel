@@ -15,6 +15,7 @@ struct NewQuoteView: View {
     @State private var hasLoadedQuote = false
     @State private var acompteText: String = ""
     @State private var soldeText: String = ""
+    @State private var documentNumber: String = ""
     @State private var acomptePercentage: Double = 30
     @State private var soldePercentage: Double = 70
     @State private var showAcompteLine: Bool = false
@@ -22,6 +23,9 @@ struct NewQuoteView: View {
     @State private var receivedQuoteToEdit: QuoteEntity? = nil
     @State private var companyInfo: CompanyInfo = CompanyInfo.loadFromUserDefaults()
     @State private var selectedClient: Contact?
+    @State private var clientStreet: String = ""
+    @State private var clientPostalCode: String = ""
+    @State private var clientCity: String = ""
     @State private var quoteArticles: [QuoteArticle] = [] {
         didSet {
             print("🧩 [didSet] quoteArticles a été mis à jour.")
@@ -88,14 +92,16 @@ struct NewQuoteView: View {
                     saveQuoteToCoreData(
                         context: context,
                         quoteArticles: quoteArticles,
-                        clientName: selectedClient?.fullName ?? "-",
+                        clientCivility:selectedClient?.civility ?? "",
+                        clientProjectAddress: clientProjectAddress,
+                        clientFirstName: selectedClient?.firstName ?? "",
+                        clientLastName: selectedClient?.lastName ?? "",
                         projectName: projectName,
                         sousTotal: sousTotal,
                         remiseAmount: remiseAmount,
                         remiseIsPercentage: remiseIsPercentage,
                         remiseValue: remiseValue,
                         devisNumber: devisNumber
-                        
                     )
                     selectedTab = "devisFactures" // ⬅️ Revenir à la liste
                 } label: {
@@ -223,14 +229,19 @@ struct NewQuoteView: View {
             showFooter: true,
             showSignature: true,
             globalQuoteArticles: quoteArticles,
+            isInvoice: false,
             selectedClient: $selectedClient,
             quoteArticles: $quoteArticles,
             clientProjectAddress: $clientProjectAddress,
             projectName: $projectName,
             companyInfo: $companyInfo,
+            clientStreet: $clientStreet,
+            clientPostalCode: $clientPostalCode,
+            clientCity: $clientCity,
             showingClientSelection: $showingClientSelection,
             showingArticleSelection: $showingArticleSelection,
             devisNumber: $devisNumber,
+            documentNumber: $documentNumber,
             signatureBlockHeight: $signatureBlockHeight,
             sousTotal: $sousTotal,
             remiseAmount: $remiseAmount,
@@ -367,18 +378,24 @@ struct NewQuoteView: View {
             let isLastPage = index == pages.count - 1
 
             let view = A4SheetView(
-                showHeader: isFirstPage,
-                showFooter: true,
-                showSignature: isLastPage,
+                showHeader: isFirstPage,             // ✅ Header uniquement première page
+                showFooter: true,                    // ✅ Footer toujours
+                showSignature: isLastPage,           // ✅ Signature uniquement dernière page
                 globalQuoteArticles: quoteArticles,
+                isInvoice: false,
                 selectedClient: $selectedClient,
                 quoteArticles: .constant(pageArticles),
+               // quoteArticles: $quoteArticles,
                 clientProjectAddress: $clientProjectAddress,
                 projectName: $projectName,
                 companyInfo: $companyInfo,
-                showingClientSelection: .constant(false),
-                showingArticleSelection: .constant(false),
-                devisNumber: $devisNumber,
+                clientStreet: $clientStreet,
+                clientPostalCode: $clientPostalCode,
+                clientCity: $clientCity,
+                showingClientSelection: $showingClientSelection,
+                showingArticleSelection: $showingArticleSelection,
+                devisNumber: .constant(""), // ← AJOUT ICI
+                documentNumber: $documentNumber,
                 signatureBlockHeight: $signatureBlockHeight,
                 sousTotal: $sousTotal,
                 remiseAmount: $remiseAmount,
@@ -436,7 +453,10 @@ struct NewQuoteView: View {
     func saveQuoteToCoreData(
         context: NSManagedObjectContext,
         quoteArticles: [QuoteArticle],
-        clientName: String,
+        clientCivility: String,
+        clientProjectAddress: String,
+        clientFirstName: String,
+        clientLastName: String,
         projectName: String,
         sousTotal: Double,
         remiseAmount: Double,
@@ -464,8 +484,20 @@ struct NewQuoteView: View {
                 quoteToUpdate.id = UUID()
                 quoteToUpdate.date = Date()
             }
-
-            quoteToUpdate.clientName = clientName
+            
+            // Assurer que les champs individuels sont bien sauvegardés
+            quoteToUpdate.clientStreet = clientStreet
+            quoteToUpdate.clientPostalCode = clientPostalCode
+            if let phone = selectedClient?.phoneNumber, !phone.isEmpty {
+                quoteToUpdate.clientPhone = phone
+            }
+            if let email = selectedClient?.email, !email.isEmpty {
+                quoteToUpdate.clientEmail = email
+            }
+            quoteToUpdate.clientCity = clientCity
+            quoteToUpdate.clientCivility = clientCivility
+            quoteToUpdate.clientFirstName = clientFirstName
+            quoteToUpdate.clientLastName = clientLastName
             quoteToUpdate.projectName = projectName
             quoteToUpdate.quoteArticlesData = try? JSONEncoder().encode(quoteArticles)
             quoteToUpdate.sousTotal = sousTotal
@@ -473,18 +505,18 @@ struct NewQuoteView: View {
             quoteToUpdate.remiseIsPercentage = remiseIsPercentage
             quoteToUpdate.remiseValue = remiseValue
             quoteToUpdate.devisNumber = devisNumber
-            quoteToUpdate.clientName = selectedClient?.firstName ?? ""
-            quoteToUpdate.clientStreet = selectedClient?.street ?? ""
-            quoteToUpdate.clientPostalCode = selectedClient?.postalCode ?? ""
-            quoteToUpdate.clientCity = selectedClient?.city ?? ""
             quoteToUpdate.acompteText = acompteText
             quoteToUpdate.acomptePercentage = acomptePercentage
+            quoteToUpdate.acompteLabel = acompteLabel
+            quoteToUpdate.showAcompteLine = showAcompteLine
+
             quoteToUpdate.soldeText = soldeText
             quoteToUpdate.soldePercentage = soldePercentage
-            quoteToUpdate.acompteLabel = acompteLabel
             quoteToUpdate.soldeLabel = soldeLabel
-            quoteToUpdate.showAcompteLine = showAcompteLine
             quoteToUpdate.showSoldeLine = showSoldeLine
+            
+            // Sauvegarder les autres valeurs de l'adresse dans Core Data
+            quoteToUpdate.clientProjectAddress = clientProjectAddress // Si tu veux aussi sauvegarder la version entière de l'adresse
 
             try context.save()
             print("✅ Devis enregistré (créé ou mis à jour)")
@@ -503,28 +535,33 @@ struct NewQuoteView: View {
         acomptePercentage = quote.acomptePercentage
         acompteLabel = quote.acompteLabel ?? "Acompte à la signature de"
         showAcompteLine = quote.showAcompteLine
-
+        clientStreet = quote.clientStreet ?? ""
+        clientPostalCode = quote.clientPostalCode ?? ""
+        clientCity = quote.clientCity ?? ""
         soldeText = quote.soldeText ?? ""
         soldePercentage = quote.soldePercentage
         soldeLabel = quote.soldeLabel ?? "Solde à la réception du chantier de"
         showSoldeLine = quote.showSoldeLine
+        
+        // Mise à jour de l'adresse projet
+        clientProjectAddress = "\(quote.clientStreet ?? "")\n\(quote.clientPostalCode ?? "") \(quote.clientCity ?? "")"
         
         if let data = quote.quoteArticlesData,
            let articles = try? JSONDecoder().decode([QuoteArticle].self, from: data) {
             quoteArticles = articles
         }
 
-
-        // ✅ Création d’un Contact temporaire pour affichage (hors Core Data)
+        // Création d’un Contact temporaire pour affichage (hors Core Data)
         let temporaryClient = Contact(entity: Contact.entity(), insertInto: nil)
-        temporaryClient.firstName = quote.clientName
+        temporaryClient.civility = quote.clientCivility // C'est ça qui manquait
+        temporaryClient.firstName = quote.clientFirstName
+        temporaryClient.lastName = quote.clientLastName
         temporaryClient.street = quote.clientStreet
         temporaryClient.postalCode = quote.clientPostalCode
         temporaryClient.city = quote.clientCity
         selectedClient = temporaryClient
 
-        // ✅ Mise à jour de l’adresse projet
-        clientProjectAddress = "\(temporaryClient.street ?? "")\n\(temporaryClient.postalCode ?? "") \(temporaryClient.city ?? "")"
+        // Pas besoin de mettre à jour l'adresse ici à nouveau, c'est déjà fait ci-dessus
     }
 
 }

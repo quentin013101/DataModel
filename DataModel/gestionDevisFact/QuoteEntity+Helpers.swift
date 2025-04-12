@@ -44,7 +44,7 @@ extension QuoteEntity {
 
     var invoicesArray: [Invoice] {
         let set = invoices as? Set<Invoice> ?? []
-        return set.sorted(by: { ($0.date ?? .distantPast) < ($1.date ?? .distantPast) })
+        return set.sorted { ($0.date ?? .distantPast) < ($1.date ?? .distantPast) }
     }
 
     func invoicesTotal() -> Double {

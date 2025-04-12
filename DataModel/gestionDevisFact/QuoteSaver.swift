@@ -4,7 +4,9 @@ import Foundation
 func saveQuoteToCoreData(
     context: NSManagedObjectContext,
     quoteArticles: [QuoteArticle],
-    clientName: String,
+    clientCivility: String,
+    clientFirstName: String,
+    clientLastName: String,
     projectName: String,
     sousTotal: Double,
     remiseAmount: Double,
@@ -15,7 +17,9 @@ func saveQuoteToCoreData(
     let newQuote = QuoteEntity(context: context)
     newQuote.id = UUID()
     newQuote.date = Date()
-    newQuote.clientName = clientName
+    newQuote.clientCivility = clientCivility
+    newQuote.clientFirstName = clientFirstName
+    newQuote.clientLastName = clientLastName
     newQuote.projectName = projectName
     newQuote.quoteArticlesData = try? JSONEncoder().encode(quoteArticles)
     newQuote.sousTotal = sousTotal
@@ -27,7 +31,7 @@ func saveQuoteToCoreData(
     do {
         try context.save()
         print("✅ Devis sauvegardé dans Core Data")
-        dismiss() // 👈 ferme la vue après enregistrement
+        // Le dismiss() ne peut pas être utilisé ici : il doit être appelé dans une View
     } catch {
         print("❌ Erreur lors de la sauvegarde : \(error)")
     }

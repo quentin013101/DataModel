@@ -11,6 +11,7 @@ struct QuoteListView: View {
 
     @Binding var selectedTab: String
     @Binding var quoteToEdit: QuoteEntity?
+    @Binding var selectedQuoteForInvoice: QuoteEntity?
     @Binding var invoiceToEdit: Invoice?
 
     var groupedQuotes: [(String, [QuoteEntity])] {
@@ -34,7 +35,8 @@ struct QuoteListView: View {
                         quotes: monthQuotes,
                         selectedTab: $selectedTab,
                         quoteToEdit: $quoteToEdit,
-                        invoiceToEdit: $invoiceToEdit
+                        invoiceToEdit: $invoiceToEdit,
+                        selectedQuoteForInvoice: $selectedQuoteForInvoice // ✅ Ajouté
                     )
                 }
             }
@@ -60,6 +62,7 @@ struct QuoteMonthSection: View {
     @Binding var selectedTab: String
     @Binding var quoteToEdit: QuoteEntity?
     @Binding var invoiceToEdit: Invoice?
+    @Binding var selectedQuoteForInvoice: QuoteEntity?
 
     var body: some View {
         Section(header: Text(month)
@@ -72,6 +75,7 @@ struct QuoteMonthSection: View {
                         selectedTab: $selectedTab,
                         quoteToEdit: $quoteToEdit,
                         invoiceToEdit: $invoiceToEdit,
+                        selectedQuoteForInvoice: $selectedQuoteForInvoice,
                         quote: quote
                     )
                 }

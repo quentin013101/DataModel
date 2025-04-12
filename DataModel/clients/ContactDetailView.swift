@@ -6,7 +6,8 @@ struct ContactDetailView: View {
     @Environment(\.dismiss) private var dismiss
 
     let contact: Contact
-
+    let civilities = ["M.", "Mme", "Mlle"]
+    @State private var civility: String
     @State private var firstName: String
     @State private var lastName: String
     @State private var street: String
@@ -26,6 +27,7 @@ struct ContactDetailView: View {
 
     init(contact: Contact) {
         self.contact = contact
+        _civility = State(initialValue: contact.civility ?? "M.")
         _firstName = State(initialValue: contact.firstName ?? "")
         _lastName = State(initialValue: contact.lastName ?? "")
         _street = State(initialValue: contact.street ?? "")
@@ -71,6 +73,13 @@ struct ContactDetailView: View {
 
                 // 🔹 Informations personnelles
                 Section(header: Text("Informations Personnelles").bold().frame(maxWidth: .infinity, alignment: .center)) {
+                    Picker("Civilité", selection: $civility) {
+                        Text("M.").tag("M.")
+                        Text("Mme").tag("Mme")
+                        Text("Mlle").tag("Dr")
+                    }
+                    .pickerStyle(SegmentedPickerStyle())
+                    .disabled(!isEditing)
                     InputField(label: "Prénom", text: $firstName, isEditing: isEditing)
                     InputField(label: "Nom *", text: $lastName, isEditing: isEditing)
                     VStack(alignment: .leading) {
@@ -176,6 +185,7 @@ struct ContactDetailView: View {
     }
 
     private func saveChanges() {
+        contact.civility = civility
         contact.firstName = firstName
         contact.lastName = lastName
         contact.street = street
@@ -198,4 +208,18 @@ struct ContactDetailView: View {
         try? viewContext.save()
         dismiss()
     }
+//    // ✅ Composant pour un champ Picker
+//    private func formRowPicker(label: String, selection: Binding<String>, options: [String]) -> some View {
+//        HStack {
+//            Text(label)
+//                .frame(width: 120, alignment: .leading)
+//            Picker("", selection: selection) {
+//                ForEach(options, id: \.self) { option in
+//                    Text(option)
+//                }
+//            }
+//            .pickerStyle(MenuPickerStyle())
+//            .frame(maxWidth: .infinity)
+//        }
+//    }
 }

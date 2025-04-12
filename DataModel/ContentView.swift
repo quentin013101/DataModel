@@ -1,10 +1,12 @@
 import SwiftUI
+import CoreData
 
 struct ContentView: View {
     @Binding var selectedTab: String
 
     @State private var quoteToEdit: QuoteEntity? = nil
     @State private var invoiceToEdit: Invoice? = nil
+    @State private var selectedQuoteForInvoice: QuoteEntity? = nil
 
     var body: some View {
         NavigationSplitView {
@@ -21,7 +23,7 @@ struct ContentView: View {
 
             case "facture":
                 if let invoice = invoiceToEdit {
-                    NewInvoiceView(viewModel: InvoiceViewModel(invoice: invoice), selectedTab: $selectedTab)
+                    NewInvoiceView(invoice: invoice, sourceQuote: selectedQuoteForInvoice, selectedTab: $selectedTab)
                 } else {
                     Text("Aucune facture sélectionnée")
                 }
@@ -29,6 +31,7 @@ struct ContentView: View {
                 QuoteListView(
                     selectedTab: $selectedTab,
                     quoteToEdit: $quoteToEdit,
+                    selectedQuoteForInvoice: $selectedQuoteForInvoice, // ✅ ici
                     invoiceToEdit: $invoiceToEdit
                 )
 
@@ -50,7 +53,7 @@ struct InvoiceTabView: View {
 
     var body: some View {
         if let invoice = invoiceToEdit {
-            NewInvoiceView(viewModel: InvoiceViewModel(invoice: invoice), selectedTab: $selectedTab)
+            NewInvoiceView(invoice: invoice, sourceQuote: nil, selectedTab: $selectedTab)
                 .onAppear {
                     print("Chargement facture dans tabView : \(invoice.invoiceNumber ?? "-")")
                     invoiceToEdit = nil

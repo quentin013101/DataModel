@@ -26,6 +26,13 @@
         <relationship name="quote" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Quote"/>
     </entity>
     <entity name="Invoice" representedClassName="Invoice" syncable="YES" codeGenerationType="class">
+        <attribute name="acompteLabel" optional="YES" attributeType="String"/>
+        <attribute name="acomptePercentage" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="acompteText" optional="YES" attributeType="String"/>
+        <attribute name="clientCity" optional="YES" attributeType="String"/>
+        <attribute name="clientPostalCode" optional="YES" attributeType="String"/>
+        <attribute name="clientProjectAddress" optional="YES" attributeType="String"/>
+        <attribute name="clientStreet" optional="YES" attributeType="String"/>
         <attribute name="date" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="invoiceArticlesData" optional="YES" attributeType="Binary"/>
@@ -35,9 +42,15 @@
         <attribute name="partialAmount" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
         <attribute name="partialPercentage" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
         <attribute name="paymentTerms" optional="YES" attributeType="String"/>
+        <attribute name="projectName" optional="YES" attributeType="String"/>
         <attribute name="referenceQuoteDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="referenceQuoteNumber" optional="YES" attributeType="String"/>
         <attribute name="referenceQuoteTotal" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="showAcompteLine" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="showSoldeLine" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="soldeLabel" optional="YES" attributeType="String"/>
+        <attribute name="soldePercentage" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="soldeText" optional="YES" attributeType="String"/>
         <attribute name="status" optional="YES" attributeType="String"/>
         <attribute name="totalHT" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
         <attribute name="totalTTC" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
@@ -60,8 +73,13 @@
         <attribute name="acomptePercentage" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
         <attribute name="acompteText" optional="YES" attributeType="String"/>
         <attribute name="clientCity" optional="YES" attributeType="String"/>
-        <attribute name="clientName" optional="YES" attributeType="String"/>
+        <attribute name="clientCivility" optional="YES" attributeType="String"/>
+        <attribute name="clientEmail" optional="YES" attributeType="String"/>
+        <attribute name="clientFirstName" optional="YES" attributeType="String"/>
+        <attribute name="clientLastName" optional="YES" attributeType="String"/>
+        <attribute name="clientPhone" optional="YES" attributeType="String"/>
         <attribute name="clientPostalCode" optional="YES" attributeType="String"/>
+        <attribute name="clientProjectAddress" optional="YES" attributeType="String"/>
         <attribute name="clientStreet" optional="YES" attributeType="String"/>
         <attribute name="date" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="devisNumber" optional="YES" attributeType="String"/>
@@ -78,6 +96,6 @@
         <attribute name="soldeText" optional="YES" attributeType="String"/>
         <attribute name="sousTotal" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
         <attribute name="status" optional="YES" attributeType="String" defaultValueString="Brouillon"/>
-        <relationship name="invoices" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="Invoice" inverseName="quote" inverseEntity="Invoice"/>
+        <relationship name="invoices" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Invoice" inverseName="quote" inverseEntity="Invoice"/>
     </entity>
 </model>

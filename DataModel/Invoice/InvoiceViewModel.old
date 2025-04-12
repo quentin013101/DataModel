@@ -1,0 +1,111 @@
+//
+//  InvoiceViewModel.swift
+//  DataModel
+//
+//  Created by Quentin FABERES on 05/04/2025.
+//
+
+import Foundation
+import SwiftUI
+
+class InvoiceViewModel: ObservableObject {
+    @Published var invoice: Invoice
+    @Published var articles: [QuoteArticle]
+    @Published var note: String
+    @Published var date: Date
+    @Published var totalPreviouslyInvoiced: Double = 0.0
+    @Published var projectName: String
+    @Published var clientName: String
+    @Published var clientAddress: String
+    @Published var companyName: String
+    @Published var companyAddress: String
+    @Published var companyLogo: Data?
+    @Published var quoteNumber: String
+    @Published var companyPhone: String
+    @Published var companyEmail: String
+    @Published var clientCivility: String // ← est-ce que tu l’as bien ajouté ?
+    
+    init(invoice: Invoice) {
+        self.invoice = invoice
+
+        // Chargement manuel des articles (remplace decodedQuoteArticles)
+        let decoder = JSONDecoder()
+        if let data = invoice.invoiceArticlesData,
+           let decoded = try? decoder.decode([QuoteArticle].self, from: data) {
+            self.articles = decoded
+        } else {
+            self.articles = []
+        }
+
+        self.note = invoice.invoiceNote ?? ""
+        self.date = invoice.date ?? Date()
+
+        // Récupération des infos du devis (si existant)
+        if let quote = invoice.quote {
+            self.projectName = quote.projectName ?? ""
+            self.clientName = [quote.clientFirstName, quote.clientLastName]
+                .compactMap { $0 }
+                .joined(separator: " ")
+            self.clientCivility = quote.clientCivility ?? ""
+            self.clientAddress = [quote.clientStreet, "\(quote.clientPostalCode ?? "") \(quote.clientCity ?? "")"]
+                .compactMap { $0 }
+                .joined(separator: "\n")
+            self.quoteNumber = quote.devisNumber ?? ""
+            self.clientCivility = quote.clientCivility ?? ""
+        } else {
+            self.projectName = ""
+            self.clientName = ""
+            self.clientAddress = ""
+            self.quoteNumber = ""
+            self.clientCivility = "" // ✅ Et ici aussi
+        }
+        
+
+        // Récupération des infos de l'entreprise
+        let company = CompanyInfo.loadFromUserDefaults()
+        self.companyName = company.companyName
+        self.companyAddress = [company.addressLine1, company.addressLine2]
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
+        self.companyLogo = company.logoData
+        self.companyPhone = company.phone
+        self.companyEmail = company.email
+        print("👀 CIVILITÉ chargée : \(self.clientCivility)")
+
+    }
+
+    var totalHT: Double {
+        articles.map { $0.totalHT }.reduce(0, +)
+    }
+
+    var tva: Double {
+        totalHT * 0.2
+    }
+
+    var totalTTC: Double {
+        totalHT + tva
+    }
+    var clientStreet: String {
+        invoice.quote?.clientStreet ?? ""
+    }
+
+    var clientPostalCode: String {
+        invoice.quote?.clientPostalCode ?? ""
+    }
+
+    var clientCity: String {
+        invoice.quote?.clientCity ?? ""
+    }
+
+    func saveArticlesToInvoice() {
+        let encoder = JSONEncoder()
+        if let data = try? encoder.encode(articles) {
+            invoice.invoiceArticlesData = data
+        }
+        invoice.invoiceNote = note
+        invoice.date = date
+        invoice.totalHT = totalHT
+        invoice.tva = tva
+        invoice.totalTTC = totalTTC
+    }
+}

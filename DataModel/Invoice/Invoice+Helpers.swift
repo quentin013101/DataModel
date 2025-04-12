@@ -51,21 +51,21 @@ func defaultInfoText(for invoice: Invoice) -> String {
     }
 }
 
-func generateNewInvoiceNumber() -> String {
-    let formatter = DateFormatter()
-    formatter.dateFormat = "yyyy-MM"
-    let prefix = formatter.string(from: Date())
-
-    let fetchRequest: NSFetchRequest<Invoice> = Invoice.fetchRequest()
-    fetchRequest.predicate = NSPredicate(format: "invoiceNumber BEGINSWITH %@", "FAC-\(prefix)")
-
-    do {
-        let results = try PersistenceController.shared.container.viewContext.fetch(fetchRequest)
-        let nextIndex = (results.count + 1)
-        return String(format: "FAC-%@-%03d", prefix, nextIndex)
-    } catch {
-        print("❌ Erreur lors de la génération du numéro : \(error)")
-        return "FAC-\(prefix)-001"
-    }
-}
+//func generateNewInvoiceNumber() -> String {
+//    let formatter = DateFormatter()
+//    formatter.dateFormat = "yyyy-MM"
+//    let prefix = formatter.string(from: Date())
+//
+//    let fetchRequest: NSFetchRequest<Invoice> = Invoice.fetchRequest()
+//    fetchRequest.predicate = NSPredicate(format: "invoiceNumber BEGINSWITH %@", "FAC-\(prefix)")
+//
+//    do {
+//        let results = try PersistenceController.shared.container.viewContext.fetch(fetchRequest)
+//        let nextIndex = (results.count + 1)
+//        return String(format: "FAC-%@-%03d", prefix, nextIndex)
+//    } catch {
+//        print("❌ Erreur lors de la génération du numéro : \(error)")
+//        return "FAC-\(prefix)-001"
+//    }
+//}
 

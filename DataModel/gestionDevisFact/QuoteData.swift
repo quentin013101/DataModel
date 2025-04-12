@@ -12,7 +12,8 @@ import CoreData
 struct QuoteData: Identifiable {
     var id: UUID
     var date: Date
-    var clientName: String
+    var clientFirstName: String
+    var clientLastName: String
     var projectName: String
     var quoteArticles: [QuoteArticle]
     var sousTotal: Double
@@ -20,22 +21,35 @@ struct QuoteData: Identifiable {
     var remiseIsPercentage: Bool
     var remiseValue: Double
     var devisNumber: String
+
+    var clientFullName: String {
+        [clientFirstName, clientLastName]
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+    }
 }
 
 extension QuoteEntity {
     func toQuoteData() -> QuoteData? {
         guard let id = id,
-              let clientName = clientName,
               let projectName = projectName,
               let quoteArticlesData = quoteArticlesData,
-              let devisNumber = devisNumber else { return nil }
+              let devisNumber = devisNumber else {
+            return nil
+        }
 
-        guard let articles = try? JSONDecoder().decode([QuoteArticle].self, from: quoteArticlesData) else { return nil }
+        let clientFirstName = self.clientFirstName ?? ""
+        let clientLastName = self.clientLastName ?? ""
+
+        guard let articles = try? JSONDecoder().decode([QuoteArticle].self, from: quoteArticlesData) else {
+            return nil
+        }
 
         return QuoteData(
             id: id,
             date: date ?? Date(),
-            clientName: clientName,
+            clientFirstName: clientFirstName,
+            clientLastName: clientLastName,
             projectName: projectName,
             quoteArticles: articles,
             sousTotal: sousTotal,

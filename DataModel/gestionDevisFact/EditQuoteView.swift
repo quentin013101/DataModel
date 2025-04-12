@@ -12,7 +12,9 @@ struct EditQuoteView: View {
 
     @State private var quoteArticles: [QuoteArticle] = []
     @State private var projectName: String = ""
-    @State private var clientName: String = ""
+    @State private var clientFirstName: String = ""
+    @State private var clientLastName: String = ""
+    @State private var clientCivility: String = ""
     @State private var devisNumber: String = ""
 
     var quoteEntity: QuoteEntity
@@ -24,7 +26,8 @@ struct EditQuoteView: View {
 
     var body: some View {
         Form {
-            TextField("Nom du client", text: $clientName)
+            TextField("Prénom", text: $clientFirstName)
+            TextField("Nom", text: $clientLastName)
             TextField("Nom du projet", text: $projectName)
             TextField("Numéro de devis", text: $devisNumber)
 
@@ -48,7 +51,9 @@ struct EditQuoteView: View {
     }
 
     func loadQuote() {
-        clientName = quoteEntity.clientName ?? ""
+        clientCivility = quoteEntity.clientCivility ?? ""
+        clientFirstName = quoteEntity.clientFirstName ?? ""
+        clientLastName = quoteEntity.clientLastName ?? ""
         projectName = quoteEntity.projectName ?? ""
         devisNumber = quoteEntity.devisNumber ?? ""
 
@@ -59,7 +64,9 @@ struct EditQuoteView: View {
     }
 
     func saveModifications() {
-        quoteEntity.clientName = clientName
+        quoteEntity.clientCivility = clientCivility
+        quoteEntity.clientFirstName = clientFirstName
+        quoteEntity.clientLastName = clientLastName
         quoteEntity.projectName = projectName
         quoteEntity.devisNumber = devisNumber
         quoteEntity.quoteArticlesData = try? JSONEncoder().encode(quoteArticles)
