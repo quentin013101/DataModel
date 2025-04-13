@@ -230,6 +230,7 @@ struct NewQuoteView: View {
             showSignature: true,
             globalQuoteArticles: quoteArticles,
             isInvoice: false,
+            invoiceType: nil,
             selectedClient: $selectedClient,
             quoteArticles: $quoteArticles,
             clientProjectAddress: $clientProjectAddress,
@@ -383,6 +384,7 @@ struct NewQuoteView: View {
                 showSignature: isLastPage,           // ✅ Signature uniquement dernière page
                 globalQuoteArticles: quoteArticles,
                 isInvoice: false,
+                invoiceType: nil,
                 selectedClient: $selectedClient,
                 quoteArticles: .constant(pageArticles),
                // quoteArticles: $quoteArticles,

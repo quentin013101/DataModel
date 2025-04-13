@@ -36,6 +36,7 @@
 				gestionDevisFact/QuoteSaver.swift,
 				Invoice/InvoiceSheetView.old,
 				Invoice/InvoiceViewModel.old,
+				Invoice/NewInvoiceView.old,
 				PDF/NSImageViewRepresentable.swift.old,
 				Quote/A4SheetView.old,
 				Quote/ArticleSelectionView.old,
@@ -65,6 +66,7 @@
 			membershipExceptions = (
 				Invoice/InvoiceSheetView.old,
 				Invoice/InvoiceViewModel.old,
+				Invoice/NewInvoiceView.old,
 				PDF/NSImageViewRepresentable.swift.old,
 				Quote/A4SheetView.old,
 				Quote/ArticleSelectionView.old,

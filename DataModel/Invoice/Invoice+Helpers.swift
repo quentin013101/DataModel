@@ -22,6 +22,14 @@ extension Invoice {
         case .abandonné: return .red
         }
     }
+    var invoiceTypeEnum: InvoiceType {
+        get { InvoiceType(rawValue: invoiceType ?? "") ?? .finale } // finale par défaut si nil
+        set { invoiceType = newValue.rawValue }
+    }
+
+    var isFinalInvoice: Bool {
+        invoiceTypeEnum == .finale
+    }
 //    var decodedQuoteArticles: [QuoteArticle] {
 //        guard let data = invoiceArticlesData else { return [] }
 //        let decoder = JSONDecoder()
@@ -32,10 +40,8 @@ extension Double {
     func formattedCurrency() -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
-        formatter.currencyCode = "EUR"
-        formatter.maximumFractionDigits = 2
-        formatter.minimumFractionDigits = 2
-        return formatter.string(from: NSNumber(value: self)) ?? "€0.00"
+        formatter.locale = Locale(identifier: "fr_FR")
+        return formatter.string(from: NSNumber(value: self)) ?? "\(self) €"
     }
 }
 func defaultInfoText(for invoice: Invoice) -> String {
@@ -51,21 +57,21 @@ func defaultInfoText(for invoice: Invoice) -> String {
     }
 }
 
-//func generateNewInvoiceNumber() -> String {
-//    let formatter = DateFormatter()
-//    formatter.dateFormat = "yyyy-MM"
-//    let prefix = formatter.string(from: Date())
-//
-//    let fetchRequest: NSFetchRequest<Invoice> = Invoice.fetchRequest()
-//    fetchRequest.predicate = NSPredicate(format: "invoiceNumber BEGINSWITH %@", "FAC-\(prefix)")
-//
-//    do {
-//        let results = try PersistenceController.shared.container.viewContext.fetch(fetchRequest)
-//        let nextIndex = (results.count + 1)
-//        return String(format: "FAC-%@-%03d", prefix, nextIndex)
-//    } catch {
-//        print("❌ Erreur lors de la génération du numéro : \(error)")
-//        return "FAC-\(prefix)-001"
-//    }
-//}
+func generateNewInvoiceNumber() -> String {
+    let formatter = DateFormatter()
+    formatter.dateFormat = "yyyy-MM"
+    let prefix = formatter.string(from: Date())
+
+    let fetchRequest: NSFetchRequest<Invoice> = Invoice.fetchRequest()
+    fetchRequest.predicate = NSPredicate(format: "invoiceNumber BEGINSWITH %@", "FAC-\(prefix)")
+
+    do {
+        let results = try PersistenceController.shared.container.viewContext.fetch(fetchRequest)
+        let nextIndex = (results.count + 1)
+        return String(format: "FAC-%@-%03d", prefix, nextIndex)
+    } catch {
+        print("❌ Erreur lors de la génération du numéro : \(error)")
+        return "FAC-\(prefix)-001"
+    }
+}
 

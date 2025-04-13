@@ -103,7 +103,6 @@ struct NewInvoiceView: View {
                                 showSignature: true,
                                 globalQuoteArticles: quoteArticles,
                                 isInvoice: true,
-                                invoiceType: invoice.invoiceTypeEnum,
                                 selectedClient: $selectedClient,
                                 quoteArticles: $quoteArticles,
                                 clientProjectAddress: $clientProjectAddress,
@@ -395,7 +394,6 @@ struct NewInvoiceView: View {
                 showSignature: isLastPage,           // ✅ Signature uniquement dernière page
                 globalQuoteArticles: quoteArticles,
                 isInvoice: true,
-                invoiceType: invoice.invoiceTypeEnum,
                 selectedClient: $selectedClient,
                 quoteArticles: .constant(pageArticles),
                 clientProjectAddress: $clientProjectAddress,

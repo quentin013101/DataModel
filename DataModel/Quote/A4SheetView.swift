@@ -11,7 +11,13 @@ struct A4SheetView: View {
     let showSignature: Bool
     let globalQuoteArticles: [QuoteArticle]
     let isInvoice: Bool
-    
+    let invoiceType: InvoiceType?
+    var isFinalInvoice: Bool {
+        invoiceType == .finale
+    }
+    var shouldApplyRemise: Bool {
+        !isInvoice || isFinalInvoice
+    }
     // let companyInfo: CompanyInfo
     
     @Binding var selectedClient: Contact?
@@ -97,7 +103,9 @@ struct A4SheetView: View {
     }
     private var netAPayer: Double {
         let total = sousTotal
-        let remise = remiseIsPercentage ? (total * remiseValue / 100) : remiseValue
+        let remise = shouldApplyRemise
+            ? (remiseIsPercentage ? (total * remiseValue / 100) : remiseValue)
+            : 0
         return total - remise
     }
     
@@ -573,7 +581,7 @@ struct A4SheetView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             VStack(alignment: .trailing, spacing: 8) {
-                if remiseAmount != 0 {
+                if remiseAmount != 0 && shouldApplyRemise {
                     HStack {
                         Text("Sous-total :").font(.system(size: 10).bold())
                         Text(String(format: "%.2f €", sousTotal))
@@ -820,10 +828,15 @@ struct A4SheetView: View {
                 .map { Double($0.quantity) * ($0.unitPrice ?? 0.0) }
                 .reduce(0, +)
 
-            // ✅ Si la remise est en pourcentage, calculer la vraie valeur en €
-            self.remiseAmount = remiseIsPercentage ? (sousTotal * remiseValue / 100) : remiseValue
+            if shouldApplyRemise {
+                self.remiseAmount = remiseIsPercentage ? (sousTotal * remiseValue / 100) : remiseValue
+            } else {
+                self.remiseAmount = 0
+            }
         }
-        return sousTotal - remiseAmount
+
+        let remiseAppliquée = shouldApplyRemise ? remiseAmount : 0
+        return sousTotal - remiseAppliquée
     }
     func updateAcompteText() {
         let amount = netAPayer * acomptePercentage / 100

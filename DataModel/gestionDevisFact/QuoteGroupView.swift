@@ -10,13 +10,14 @@ struct QuoteGroupView: View {
     @Binding var selectedQuoteForInvoice: QuoteEntity?
 
     let quote: QuoteEntity
-
+    @State private var companyInfo: CompanyInfo = CompanyInfo.loadFromUserDefaults()
     @State private var showPercentageInput = false
     @State private var invoiceToCreateType: InvoiceType?
     @State private var invoiceToDelete: Invoice?
     @State private var customPercentage: Double = 30
     @State private var showDeleteConfirmation = false
     @State private var showInvoiceDeleteConfirmation = false
+    @State private var isAutoEntrepreneur: Bool = true // ou false selon le profil
 
     init(
         selectedTab: Binding<String>,
@@ -42,8 +43,20 @@ struct QuoteGroupView: View {
         VStack(alignment: .leading, spacing: 6) {
             // 🏷️ En-tête avec le nom du projet
             VStack(alignment: .leading, spacing: 2) {
-                Text(quote.projectName ?? "Nom du projet")
-                    .font(.title3).bold()
+                HStack {
+                    Text(quote.projectName ?? "Nom du projet")
+                        .font(.title3).bold()
+
+                    Spacer()
+
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text("Montant devisé : \(quote.total.formattedCurrency())")
+                        let totalFacturé = relatedInvoices.reduce(0) { $0 + $1.totalTTC }
+                        Text("Montant facturé : \(totalFacturé.formattedCurrency())")
+                    }
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
+                }
                 HStack(spacing: 24) {
                     Text(quote.clientFullName).font(.headline)
                     Text("•")
@@ -80,12 +93,14 @@ struct QuoteGroupView: View {
 
             // 📄 Factures liées à ce devis
             ForEach(relatedInvoices) { invoice in
+                let montantAffiche = formattedInvoiceAmount(invoice)
+
                 DocumentRowView(
                     icon: "doc.text.fill",
                     number: invoice.invoiceNumber ?? "FACTURE",
                     clientName: invoice.quote?.clientFullName ?? "—",
                     amount: invoice.totalTTC.formattedCurrency(),
-                    date: invoice.date?.formatted(date: .abbreviated, time: .omitted) ?? "",
+                    date: invoice.date.map { formattedDateFR($0) } ?? "",
                     statusMenu: AnyView(InvoiceStatusMenu(invoice: invoice)),
                     onDelete: {
                         invoiceToDelete = invoice
@@ -169,10 +184,15 @@ struct QuoteGroupView: View {
                     showPercentageInput = false
                     invoiceToCreateType = nil
                 },
-                quote: quote
+                quote: quote,
+                isAutoEntrepreneur: companyInfo.legalForm.lowercased().contains("auto")
             )
         }
     }
+    func formattedInvoiceAmount(_ invoice: Invoice) -> String {
+        return invoice.totalTTC.formattedCurrency()
+    }
+
 
     func createInvoice(from quote: QuoteEntity, type: InvoiceType, percentage: Double? = nil) -> Invoice {
         let invoice = Invoice(context: viewContext)
@@ -181,18 +201,25 @@ struct QuoteGroupView: View {
         invoice.status = "Brouillon"
         invoice.quote = quote
         invoice.isPartial = (type != .finale)
+        invoice.invoiceType = type.rawValue // "acompte", "intermediaire", "finale"
         invoice.invoiceNumber = generateNextInvoiceNumber(context: viewContext)
         invoice.referenceQuoteNumber = quote.devisNumber
         invoice.referenceQuoteDate = quote.date
         invoice.referenceQuoteTotal = quote.total
 
+        let isAutoEntrepreneur = companyInfo.legalForm.lowercased().contains("auto")
+
         if type != .finale {
+            // Acompte / intermédiaire (inchangé ici)
+            let baseTotal = quote.total
             let p = percentage ?? 30
             invoice.partialPercentage = p
-            invoice.partialAmount = quote.total * (p / 100)
+            invoice.partialAmount = baseTotal * (p / 100)
             invoice.totalHT = invoice.partialAmount
-            invoice.tva = invoice.totalHT * 0.2
+
+            invoice.tva = isAutoEntrepreneur ? 0 : invoice.totalHT * 0.2
             invoice.totalTTC = invoice.totalHT + invoice.tva
+
             invoice.invoiceNote = defaultInfoText(for: invoice)
 
             let designation = type == .acompte
@@ -206,19 +233,76 @@ struct QuoteGroupView: View {
                 unitPrice: invoice.totalHT,
                 lineType: .article
             )
+
             invoice.invoiceArticlesData = try? JSONEncoder().encode([article])
 
         } else {
-            invoice.partialAmount = quote.total
+            // ✅ Facture finale : copie du devis avec sous-total et remise
+
             invoice.totalHT = quote.sousTotal
-            invoice.tva = invoice.totalHT * 0.2
-            invoice.totalTTC = invoice.totalHT + invoice.tva
+
+            // Appliquer la remise du devis
+            let remiseIsPercentage = quote.remiseIsPercentage
+            let remiseValue = quote.remiseValue
+            let remiseAmount = remiseIsPercentage
+                ? quote.sousTotal * remiseValue / 100
+                : remiseValue
+
+            invoice.remiseIsPercentage = remiseIsPercentage
+            invoice.remiseValue = remiseValue
+            invoice.remiseAmount = remiseAmount
+
+            let totalHTAfterRemise = invoice.totalHT - remiseAmount
+            invoice.tva = isAutoEntrepreneur ? 0 : totalHTAfterRemise * 0.2
+            invoice.totalTTC = totalHTAfterRemise + invoice.tva
+
             invoice.invoiceArticlesData = quote.quoteArticlesData
+            if let previousInvoices = quote.invoices?.allObjects as? [Invoice] {
+                let previousFinalized = previousInvoices.filter { $0 != invoice && $0.isPartial }
+
+                if !previousFinalized.isEmpty,
+                   var existingArticles = try? JSONDecoder().decode([QuoteArticle].self, from: quote.quoteArticlesData ?? Data()) {
+
+                    // 🟨 Ajouter la catégorie "Factures déjà émises"
+                    existingArticles.append(QuoteArticle(
+                        lineType: .category,
+                        comment: "Factures déjà émises"
+                    ))
+
+                    let formatter = DateFormatter()
+                    formatter.dateFormat = "dd/MM/yyyy"
+
+                    for inv in previousFinalized {
+                        let dateStr = formatter.string(from: inv.date ?? Date())
+                        let designation = "Facture N° \(inv.invoiceNumber ?? "") du \(dateStr)"
+                        let article = QuoteArticle(
+                            designation: designation,
+                            quantity: 1, // ✅ important pour que le montant soit pris en compte
+                            unit: "",    // ✅ on laisse vide pour que ça ne s’affiche pas
+                            unitPrice: -(inv.totalTTC), // ✅ montant en négatif
+                            lineType: .article
+                        )
+                        existingArticles.append(article)
+                    }
+
+                    invoice.invoiceArticlesData = try? JSONEncoder().encode(existingArticles)
+                }
+            }
+            // 🔍 Log de vérification
+//            print("""
+//            ✅ Facture finale créée :
+//            - HT : \(invoice.totalHT)
+//            - Remise : \(invoice.remiseAmount)
+//            - HT après remise : \(totalHTAfterRemise)
+//            - TVA : \(invoice.tva)
+//            - TTC : \(invoice.totalTTC)
+//            """)
         }
 
         do {
             try viewContext.save()
             viewContext.refresh(quote, mergeChanges: true)
+            print("✅ Facture créée : \(invoice.invoiceNumber ?? "-")")
             return invoice
         } catch {
             print("❌ Erreur lors de la création de la facture : \(error)")
@@ -245,7 +329,8 @@ struct QuoteHeaderView: View {
             number: quote.devisNumber ?? "DEV",
             clientName: quote.clientFullName,
             amount: quote.total.formattedCurrency(),
-            date: quote.date?.formatted(date: .abbreviated, time: .omitted) ?? "",
+          //  date: quote.date?.formatted(date: .abbreviated, time: .omitted) ?? "",
+            date: quote.date.map { formattedDateFR($0) } ?? "",
             statusMenu: AnyView(QuoteStatusMenu(quote: quote)),
             onDelete: onDelete,
             onTap: onEdit
@@ -259,6 +344,7 @@ struct PercentagePopover: View {
     let onValidate: () -> Void
     let onCancel: () -> Void
     let quote: QuoteEntity
+    let isAutoEntrepreneur: Bool
 
     var body: some View {
         VStack(spacing: 12) {
@@ -273,10 +359,18 @@ struct PercentagePopover: View {
             }
 
             let montant = quote.total * (customPercentage / 100)
+
             VStack(alignment: .leading, spacing: 4) {
                 Text("Montant HT : \(montant.formattedCurrency())")
-                Text("TVA : \((montant * 0.2).formattedCurrency())")
-                Text("Total TTC : \((montant * 1.2).formattedCurrency())")
+                
+                if isAutoEntrepreneur {
+                    Text("TVA : 0 €")
+                    Text("Total TTC : \(montant.formattedCurrency())")
+                } else {
+                    let tva = montant * 0.2
+                    Text("TVA : \(tva.formattedCurrency())")
+                    Text("Total TTC : \((montant + tva).formattedCurrency())")
+                }
             }
             .font(.footnote)
             .padding(.top, 4)
@@ -372,4 +466,11 @@ struct DocumentRowView: View {
         .background(Color.gray.opacity(0.05))
         .cornerRadius(6)
     }
+}
+func formattedDateFR(_ date: Date) -> String {
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "fr_FR")
+    formatter.dateStyle = .medium
+    formatter.timeStyle = .none
+    return formatter.string(from: date)
 }

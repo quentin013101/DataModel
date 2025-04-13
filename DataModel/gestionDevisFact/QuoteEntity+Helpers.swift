@@ -1,6 +1,8 @@
 import SwiftUI
-enum InvoiceType {
-    case acompte, intermediaire, finale
+enum InvoiceType: String {
+    case acompte
+    case intermediaire
+    case finale
 }
 extension QuoteEntity {
     var statusEnum: QuoteStatus {
@@ -50,6 +52,7 @@ extension QuoteEntity {
     func invoicesTotal() -> Double {
         invoicesArray.reduce(0) { $0 + $1.totalTTC }
     }
+    
 }
 
 //extension Double {
