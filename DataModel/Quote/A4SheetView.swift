@@ -18,7 +18,9 @@ struct A4SheetView: View {
     var shouldApplyRemise: Bool {
         !isInvoice || isFinalInvoice
     }
-    // let companyInfo: CompanyInfo
+    let invoice: Invoice?
+    let sourceQuote: QuoteEntity?
+    @Binding var deductedInvoices: Set<Invoice>    // let companyInfo: CompanyInfo
     
     @Binding var selectedClient: Contact?
     @Binding var quoteArticles: [QuoteArticle]
@@ -66,11 +68,15 @@ struct A4SheetView: View {
     @State private var soldeAmount: Double = 0.0
     @Binding var acompteLabel: String
     @Binding var soldeLabel: String
-
+    @State private var availableInvoices: [Invoice] = []
+    @State private var showingFacturesPopover = false
+    @State private var showDatePickerPopover = false
+    @Binding var quoteDate: Date
     
     
 
     @Environment(\.isPrinting) private var isPrinting
+    @Environment(\.managedObjectContext) private var viewContext
     
 
 
@@ -101,12 +107,15 @@ struct A4SheetView: View {
         }
         return quoteArticles.count
     }
+    private var totalFacturesDéduites: Double {
+        deductedInvoices.reduce(0) { $0 + $1.totalTTC }
+    }
     private var netAPayer: Double {
         let total = sousTotal
         let remise = shouldApplyRemise
             ? (remiseIsPercentage ? (total * remiseValue / 100) : remiseValue)
             : 0
-        return total - remise
+        return total - remise - totalFacturesDeduites
     }
     
     var body: some View {
@@ -118,7 +127,10 @@ struct A4SheetView: View {
             }
             projectNameField
             articlesSection
-            
+            if isInvoice, isFinalInvoice, showSignature, !deductedInvoices.isEmpty {
+                deductedInvoicesSection
+                    .padding(.bottom, 16)
+            }
             if showSignature {
                 VStack(spacing: 0) {
                     signatureSection
@@ -185,6 +197,13 @@ struct A4SheetView: View {
         .onChange(of: soldePercentage) { _ in
             soldeText = "\(soldeLabel) \(Int(soldePercentage)) %, soit \(String(format: "%.2f", netAPayer * soldePercentage / 100)) €"
         }
+        .onAppear {
+            if isInvoice && isFinalInvoice,
+               let sourceQuote = sourceQuote {
+                let all = sourceQuote.invoicesArray
+                availableInvoices = all.filter { $0 != invoice }
+            }
+        }
     }
     
     // MARK: - 1) Header
@@ -214,9 +233,32 @@ struct A4SheetView: View {
                 Text(isInvoice ? "Facture N° \(documentNumber)" : "Devis N° \(devisNumber)")
                     .font(.headline)
                     .padding(.top, 16)
-                
-                Text("En date du \(formattedToday)")
-                    .font(.system(size: 10))
+
+                HStack(spacing: 4) {
+                    Text("En date du \(formattedDateFR(quoteDate))")
+                        .font(.system(size: 10))
+                       // .underline() // ← Optionnel pour montrer que c’est cliquable
+                     //   .foregroundColor(.blue) // ← Optionnel aussi
+                        .onTapGesture {
+                            showDatePickerPopover.toggle()
+                        }
+                        .popover(isPresented: $showDatePickerPopover, arrowEdge: .bottom) {
+                            VStack {
+                                DatePicker("Choisir une date", selection: $quoteDate, displayedComponents: .date)
+                                    .datePickerStyle(.graphical)
+                                    .labelsHidden()
+                                    .frame(width: 250, height: 300)
+                                    .padding()
+
+                                Button("Fermer") {
+                                    showDatePickerPopover = false
+                                }
+                                .padding(.bottom)
+                            }
+                            .frame(width: 260)
+                        }
+                }
+
                 Text("Valable 3 mois")
                     .font(.subheadline)
                     .padding(.bottom, 10)
@@ -224,19 +266,49 @@ struct A4SheetView: View {
                 ZStack(alignment: .topLeading) {
                     PDFBoxView(backgroundColor: NSColor.gray.withAlphaComponent(0.5), cornerRadius: 8)
                         .frame(width: 260, height: 80)
+                    
                     if let client = selectedClient {
                         VStack(alignment: .leading, spacing: 6) {
                             let civ = client.civility ?? "M."
                             let nomMaj = (client.lastName ?? "").uppercased()
                             let prenom = client.firstName ?? ""
-                            
+
                             Text("\(civ) \(nomMaj) \(prenom)")
                                 .font(.headline)
                                 .onTapGesture {
                                     showingClientSelection = true
                                 }
-                            
-                            TextEditor(text: $clientProjectAddress)
+
+                            if !isPrinting {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    TextField("Adresse", text: Binding(
+                                        get: {
+                                            clientProjectAddress.split(separator: "\n").first.map(String.init) ?? ""
+                                        },
+                                        set: { newStreet in
+                                            let lines = clientProjectAddress.split(separator: "\n")
+                                            let postalLine = lines.count > 1 ? lines[1] : ""
+                                            clientProjectAddress = [newStreet, String(postalLine)].joined(separator: "\n")
+                                        }
+                                    ))
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.black)
+                                    .textFieldStyle(.plain)
+
+                                    TextField("Code postal et ville", text: Binding(
+                                        get: {
+                                            clientProjectAddress.split(separator: "\n").dropFirst().first.map(String.init) ?? ""
+                                        },
+                                        set: { newPostal in
+                                            let streetLine = clientProjectAddress.split(separator: "\n").first.map(String.init) ?? ""
+                                            clientProjectAddress = [streetLine, newPostal].joined(separator: "\n")
+                                        }
+                                    ))
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.black)
+                                    .textFieldStyle(.plain)
+                                }
+                                // mise à jour automatique de clientProjectAddress
                                 .onChange(of: clientProjectAddress) { newValue in
                                     let addressComponents = newValue.split(separator: "\n")
                                     if addressComponents.count > 0 {
@@ -252,15 +324,19 @@ struct A4SheetView: View {
                                         }
                                     }
                                 }
-                                .font(.system(size: 12))
-                                .foregroundColor(.black)
-                                .scrollDisabled(true)
-                                .scrollContentBackground(.hidden)
-                                .frame(minHeight: 24)
+
+                            } else {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(clientStreet)
+                                        .font(.system(size: 12))
+                                    Text("\(clientPostalCode) \(clientCity)")
+                                        .font(.system(size: 12))
+                                }
+                            }
                         }
                         .padding(8)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                        
+
                     } else {
                         HStack {
                             Spacer()
@@ -320,7 +396,13 @@ struct A4SheetView: View {
         updatedNumbers.append(devisNumber)
         UserDefaults.standard.set(updatedNumbers, forKey: key)
     }
-    
+    private var documentDate: Date {
+        if isInvoice {
+            return invoice?.date ?? Date()
+        } else {
+            return sourceQuote?.date ?? Date()
+        }
+    }
     private var formattedToday: String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "fr_FR")
@@ -466,13 +548,34 @@ struct A4SheetView: View {
 
     }
     
-    
+    private var deductedInvoicesSection: some View {
+        VStack(spacing: 4) {
+            if isInvoice && isFinalInvoice && !deductedInvoices.isEmpty {
+                ForEach(Array(deductedInvoices), id: \.self) { inv in
+                    HStack {
+                        Text("Déduction facture \(inv.invoiceNumber ?? "??") du \(formattedDateFr(inv.date ?? Date()))")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+
+                        Spacer()
+
+                        Text("-\(inv.totalTTC.formattedCurrency())")
+                            .font(.system(size: 10))
+                            .foregroundColor(.red)
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 4)
+    }
     
     // MARK: - 5) Signature / net à payer
     
     private var signatureSection: some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 8) {
+                // 👉 Déductions de factures précédentes (avant tout)
                 if isInvoice {
                     Text("À régler en espèces, par chèque ou par virement bancaire.")
                     
@@ -581,22 +684,23 @@ struct A4SheetView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             VStack(alignment: .trailing, spacing: 8) {
+                
+                
+                // 🧾 Sous-total + remise
                 if remiseAmount != 0 && shouldApplyRemise {
                     HStack {
                         Text("Sous-total :").font(.system(size: 10).bold())
                         Text(String(format: "%.2f €", sousTotal))
                             .font(.system(size: 10))
                     }
-                    
+
                     HStack {
-                        // 🔹 TextField pour modifier le mot "Remise"
                         TextField("Remise :", text: $remiseLabel)
                             .font(.system(size: 10).bold())
                             .textFieldStyle(.plain)
                             .multilineTextAlignment(.trailing)
                             .frame(maxWidth: .infinity, alignment: .trailing)
 
-                        // Valeur de la remise
                         Text(remiseIsPercentage ? "\(remiseValue)%" : String(format: "%.2f €", remiseAmount))
                             .font(.system(size: 10))
                     }
@@ -605,11 +709,10 @@ struct A4SheetView: View {
                             remiseAmount = 0
                             remiseIsPercentage = false
                             remiseValue = 0
-                            remiseLabel = "Remise" // Remet le texte par défaut
+                            remiseLabel = "Remise"
                         }
                     }
                 }
-                
                 HStack {
                     Text("Net à payer : \(String(format: "%.2f €", computeTotal()))")
                         .bold()
@@ -637,75 +740,121 @@ struct A4SheetView: View {
                     )
                 }
                 }
-                if !isPrinting && !isInvoice {
-                    Menu("Acompte") {
-                        Button("Acompte à la signature") {
-                            acompteTextDraft = acompteText
-                            acomptePercentageDraft = acomptePercentage
-                            acompteLabelDraft = acompteLabel // ✅ AJOUT ICI
-                            showingAcomptePopover = true
-                        }
-                        Button("Solde à la réception") {
-                            soldeTextDraft = soldeText
-                            soldePercentageDraft = soldePercentage
-                            soldeLabelDraft = soldeLabel // ✅ AJOUT ICI
-                            showingSoldePopover = true
-                        }
-                    }
-                    .padding(.top, 8)
-                    .popover(isPresented: $showingAcomptePopover) {
-                        VStack(alignment: .leading, spacing: 12) {
-                            AcomptePopoverView(
-                                title: "Acompte à la signature",
-                                percentage: $acomptePercentageDraft,
-                                netAPayer: netAPayer,
-                                resultText: $acompteTextDraft
-                            )
-
-                            HStack {
-                                Spacer()
-                                Button("Annuler") {
-                                    showingAcomptePopover = false
-                                }
-                                Button("Valider") {
-                                    acompteText = acompteTextDraft
-                                    acomptePercentage = acomptePercentageDraft
-                                    acompteLabel = acompteLabelDraft
-                                    showAcompteLine = true
-                                    showingAcomptePopover = false
-                                }
-                                .keyboardShortcut(.defaultAction)
+                // 👇 Bloc de boutons sous le "Net à payer"
+                if !isPrinting {
+                    // 📌 Cas du devis : bouton "Acompte"
+                    if !isInvoice {
+                        Menu("Acompte") {
+                            Button("Acompte à la signature") {
+                                acompteTextDraft = acompteText
+                                acomptePercentageDraft = acomptePercentage
+                                acompteLabelDraft = acompteLabel
+                                showingAcomptePopover = true
+                            }
+                            Button("Solde à la réception") {
+                                soldeTextDraft = soldeText
+                                soldePercentageDraft = soldePercentage
+                                soldeLabelDraft = soldeLabel
+                                showingSoldePopover = true
                             }
                         }
-                        .padding()
-                        .frame(width: 300)
-                    }
-                    .popover(isPresented: $showingSoldePopover) {
-                        VStack(alignment: .leading, spacing: 12) {
-                            AcomptePopoverView(
-                                title: "Solde à la réception",
-                                percentage: $soldePercentageDraft,
-                                netAPayer: netAPayer,
-                                resultText: $soldeTextDraft
-                            )
-
-                            HStack {
-                                Spacer()
-                                Button("Annuler") {
-                                    showingSoldePopover = false
+                        .padding(.top, 8)
+                        .popover(isPresented: $showingAcomptePopover) {
+                            VStack(alignment: .leading, spacing: 12) {
+                                AcomptePopoverView(
+                                    title: "Acompte à la signature",
+                                    percentage: $acomptePercentageDraft,
+                                    netAPayer: netAPayer,
+                                    resultText: $acompteTextDraft
+                                )
+                                HStack {
+                                    Spacer()
+                                    Button("Annuler") {
+                                        showingAcomptePopover = false
+                                    }
+                                    Button("Valider") {
+                                        acompteText = acompteTextDraft
+                                        acomptePercentage = acomptePercentageDraft
+                                        acompteLabel = acompteLabelDraft
+                                        showAcompteLine = true
+                                        showingAcomptePopover = false
+                                    }
+                                    .keyboardShortcut(.defaultAction)
                                 }
-                                Button("Valider") {
-                                    soldeText = soldeTextDraft
-                                    soldePercentage = soldePercentageDraft
-                                    soldeLabel = soldeLabelDraft
-                                    showSoldeLine = true
-                                    showingSoldePopover = false
-                                }
-                                .keyboardShortcut(.defaultAction)
                             }
+                            .padding()
+                            .frame(width: 300)
                         }
-                        .padding()
-                        .frame(width: 300)
+                        .popover(isPresented: $showingSoldePopover) {
+                            VStack(alignment: .leading, spacing: 12) {
+                                AcomptePopoverView(
+                                    title: "Solde à la réception",
+                                    percentage: $soldePercentageDraft,
+                                    netAPayer: netAPayer,
+                                    resultText: $soldeTextDraft
+                                )
+                                HStack {
+                                    Spacer()
+                                    Button("Annuler") {
+                                        showingSoldePopover = false
+                                    }
+                                    Button("Valider") {
+                                        soldeText = soldeTextDraft
+                                        soldePercentage = soldePercentageDraft
+                                        soldeLabel = soldeLabelDraft
+                                        showSoldeLine = true
+                                        showingSoldePopover = false
+                                    }
+                                    .keyboardShortcut(.defaultAction)
+                                }
+                            }
+                            .padding()
+                            .frame(width: 300)
+                        }
+
+                    // 📌 Cas d'une facture finale : bouton "Factures émises"
+                    } else if isFinalInvoice {
+                        Button("Factures émises") {
+                            showingFacturesPopover.toggle()
+                        }
+                        .popover(isPresented: $showingFacturesPopover) {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Sélectionnez les factures à déduire")
+                                    .font(.headline)
+
+                                ScrollView {
+                                    VStack(alignment: .leading) {
+                                        ForEach(availableInvoices, id: \.self) { inv in
+                                            Toggle(
+                                                isOn: Binding(
+                                                    get: { deductedInvoices.contains(inv) },
+                                                    set: { isOn in
+                                                        if isOn {
+                                                            deductedInvoices.insert(inv)
+                                                        } else {
+                                                            deductedInvoices.remove(inv)
+                                                        }
+                                                    }
+                                                )
+                                            ) {
+                                                Text("💳 \(inv.invoiceNumber ?? "??") — \(inv.totalTTC.formattedCurrency())")
+                                            }
+                                        }
+                                    }
+                                }
+                                .frame(height: 150)
+
+                                HStack {
+                                    Spacer()
+                                    Button("Fermer") {
+                                        showingFacturesPopover = false
+                                    }
+                                }
+                            }
+                            .padding()
+                            .frame(width: 300)
+                        }
+                        .padding(.top, 8)
                     }
                 }
             }
@@ -820,7 +969,16 @@ struct A4SheetView: View {
         .padding(.bottom, 16)
     }
     
+    private func formattedDateFr(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "fr_FR")
+        formatter.dateStyle = .medium
+        return formatter.string(from: date)
+    }
     // MARK: - Fonctions calcul
+    private var totalFacturesDeduites: Double {
+        deductedInvoices.reduce(0) { $0 + $1.totalTTC }
+    }
     private func computeTotal() -> Double {
         DispatchQueue.main.async {
             self.sousTotal = quoteArticles
@@ -828,15 +986,12 @@ struct A4SheetView: View {
                 .map { Double($0.quantity) * ($0.unitPrice ?? 0.0) }
                 .reduce(0, +)
 
-            if shouldApplyRemise {
-                self.remiseAmount = remiseIsPercentage ? (sousTotal * remiseValue / 100) : remiseValue
-            } else {
-                self.remiseAmount = 0
-            }
+            self.remiseAmount = shouldApplyRemise
+                ? (remiseIsPercentage ? (sousTotal * remiseValue / 100) : remiseValue)
+                : 0
         }
 
-        let remiseAppliquée = shouldApplyRemise ? remiseAmount : 0
-        return sousTotal - remiseAppliquée
+        return sousTotal - remiseAmount - totalFacturesDeduites
     }
     func updateAcompteText() {
         let amount = netAPayer * acomptePercentage / 100
@@ -1271,39 +1426,3 @@ private var invoiceDueDateText: String {
     }
     return ""
 }
-//extension Image {
-//    func asNSImage() -> NSImage? {
-//        let hostingView = NSHostingView(rootView: self)
-//        hostingView.frame = CGRect(x: 0, y: 0, width: 100, height: 100) // Ajuster si besoin
-//
-//        let bitmapRep = hostingView.bitmapImageRepForCachingDisplay(in: hostingView.bounds)!
-//        hostingView.cacheDisplay(in: hostingView.bounds, to: bitmapRep)
-//        let nsImage = NSImage(size: hostingView.bounds.size)
-//        nsImage.addRepresentation(bitmapRep)
-//        return nsImage
-//    }
-//}
-//extension View {
-//    func asPDF() -> Data {
-//        let controller = NSHostingController(rootView: self)
-//        let view = controller.view
-//        let printInfo = NSPrintInfo()
-//        let pdfData = NSMutableData()
-//
-//        printInfo.jobDisposition = .save
-//        printInfo.horizontalPagination = .automatic
-//        printInfo.verticalPagination = .automatic
-//        printInfo.paperSize = NSSize(width: 595, height: 842) // Format A4
-//
-//        let printOperation = NSPrintOperation(view: view, printInfo: printInfo)
-//        printOperation.showsPrintPanel = false
-//        printOperation.showsProgressPanel = false
-//        printOperation.run()
-//
-//        if let pdfDocument = printOperation.view?.dataWithPDF(inside: printOperation.view!.bounds) {
-//            pdfData.append(pdfDocument)
-//        }
-//
-//        return pdfData as Data
-//    }
-//}

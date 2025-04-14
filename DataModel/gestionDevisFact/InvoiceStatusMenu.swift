@@ -7,41 +7,37 @@
 
 
 import SwiftUI
-
 struct InvoiceStatusMenu: View {
     @Environment(\.managedObjectContext) private var viewContext
     @ObservedObject var invoice: Invoice
 
+    var statusEnum: InvoiceStatus {
+        InvoiceStatus(rawValue: invoice.status ?? "") ?? .brouillon
+    }
+
     var body: some View {
         Menu {
-            ForEach(QuoteStatus.allCases, id: \.self) { status in
+            ForEach(InvoiceStatus.allCases, id: \.self) { status in
                 Button {
                     invoice.status = status.rawValue
                     try? viewContext.save()
                 } label: {
-                    Label(status.rawValue, systemImage: icon(for: status))
+                    Label(status.rawValue, systemImage: status.icon)
                 }
             }
         } label: {
             Label {
                 Text(invoice.status ?? "—")
+                    .frame(minWidth:40, alignment: .leading) // 👈 fixe une largeur minimale
+
             } icon: {
-                Image(systemName: icon(for: QuoteStatus(rawValue: invoice.status ?? "") ?? .brouillon))
+                Image(systemName: statusEnum.icon)
             }
             .font(.caption)
             .padding(6)
-            .background((invoice.statusColor ?? .gray).opacity(0.2))
-            .foregroundColor(invoice.statusColor ?? .gray)
+            .background(statusEnum.color.opacity(0.2))
+            .foregroundColor(statusEnum.color)
             .cornerRadius(6)
-        }
-    }
-
-    func icon(for status: QuoteStatus) -> String {
-        switch status {
-        case .brouillon: return "pencil"
-        case .finalisé: return "checkmark.circle"
-        case .accepté: return "checkmark.seal"
-        case .abandonné: return "xmark.circle"
         }
     }
 }

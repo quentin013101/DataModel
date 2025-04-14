@@ -50,6 +50,8 @@ struct QuoteStatusMenu: View {
         } label: {
             Label {
                 Text(quote.statusEnum.rawValue)
+                    .frame(minWidth:40, alignment: .leading) // 👈 fixe une largeur minimale
+
             } icon: {
                 Image(systemName: icon(for: quote.statusEnum))
             }

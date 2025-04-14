@@ -9,37 +9,50 @@ struct ContentView: View {
     @State private var selectedQuoteForInvoice: QuoteEntity? = nil
 
     var body: some View {
-        NavigationSplitView {
+        NavigationView {
             SidebarView(selectedTab: $selectedTab)
-        } detail: {
-            switch selectedTab {
-            case "clients":
-                ContactListView(selectedTab: $selectedTab)
-            case "articles":
-                ArticleListView(selectedTab: $selectedTab)
-            case "devis":
-                NewQuoteView(existingQuote: quoteToEdit, selectedTab: $selectedTab)
-                    .onAppear { quoteToEdit = nil }
+                .frame(minWidth: 200, idealWidth: 250, maxWidth: 300)
+            
+            // 👇 Contenu principal en fonction de l'onglet
+            detailView
+        }
+        .navigationViewStyle(DoubleColumnNavigationViewStyle()) // important pour macOS
+    }
 
-            case "facture":
-                if let invoice = invoiceToEdit {
-                    NewInvoiceView(invoice: invoice, sourceQuote: selectedQuoteForInvoice, selectedTab: $selectedTab)
-                } else {
-                    Text("Aucune facture sélectionnée")
-                }
-            case "devisFactures":
-                QuoteListView(
-                    selectedTab: $selectedTab,
-                    quoteToEdit: $quoteToEdit,
-                    selectedQuoteForInvoice: $selectedQuoteForInvoice, // ✅ ici
-                    invoiceToEdit: $invoiceToEdit
-                )
-
-            default:
-                Text("Sélectionnez un élément")
-                    .foregroundColor(.blue)
-                    .font(.title2)
+    @ViewBuilder
+    var detailView: some View {
+        switch selectedTab {
+        case "clients":
+            ContactListView(selectedTab: $selectedTab)
+        case "articles":
+            ArticleListView(selectedTab: $selectedTab)
+        case "devis":
+            NewQuoteView(existingQuote: quoteToEdit, selectedTab: $selectedTab)
+                //.onAppear { quoteToEdit = nil }
+        case "facture":
+            if let invoice = invoiceToEdit {
+                NewInvoiceView(invoice: invoice, sourceQuote: selectedQuoteForInvoice, selectedTab: $selectedTab)
+            } else {
+                Text("Aucune facture sélectionnée")
             }
+        case "devisFactures":
+            QuoteListView(
+                selectedTab: $selectedTab,
+                quoteToEdit: $quoteToEdit,
+                selectedQuoteForInvoice: $selectedQuoteForInvoice,
+                invoiceToEdit: $invoiceToEdit
+            )
+        case "dashboard":
+            DashboardView(
+                selectedTab: $selectedTab,
+                quoteToEdit: $quoteToEdit,
+                invoiceToEdit: $invoiceToEdit,
+                selectedQuoteForInvoice: $selectedQuoteForInvoice
+            )
+        default:
+            Text("Sélectionnez un élément")
+                .foregroundColor(.blue)
+                .font(.title2)
         }
     }
 }

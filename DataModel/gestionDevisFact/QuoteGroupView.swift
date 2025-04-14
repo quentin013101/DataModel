@@ -13,8 +13,10 @@ struct QuoteGroupView: View {
     @State private var companyInfo: CompanyInfo = CompanyInfo.loadFromUserDefaults()
     @State private var showPercentageInput = false
     @State private var invoiceToCreateType: InvoiceType?
+    @State private var quoteToDelete: QuoteEntity?
     @State private var invoiceToDelete: Invoice?
     @State private var customPercentage: Double = 30
+    @State private var percentageText: String = "30" // Ajoute ça au début de la vue
     @State private var showDeleteConfirmation = false
     @State private var showInvoiceDeleteConfirmation = false
     @State private var isAutoEntrepreneur: Bool = true // ou false selon le profil
@@ -50,9 +52,15 @@ struct QuoteGroupView: View {
                     Spacer()
 
                     VStack(alignment: .trailing, spacing: 2) {
+                        
                         Text("Montant devisé : \(quote.total.formattedCurrency())")
-                        let totalFacturé = relatedInvoices.reduce(0) { $0 + $1.totalTTC }
+                        let totalFacturé = relatedInvoices.reduce(0) { $0 + netTotalTTC(for: $1) }
                         Text("Montant facturé : \(totalFacturé.formattedCurrency())")
+                        let totalPayé = relatedInvoices
+                            .filter { $0.status == "Payée" }
+                            .reduce(0.0) { $0 + netTotalTTC(for: $1) }
+                        Text("Montant payé : \(totalPayé.formattedCurrency())")
+                            .foregroundColor(totalPayé >= totalFacturé ? .green : .red)
                     }
                     .font(.footnote)
                     .foregroundColor(.secondary)
@@ -82,9 +90,7 @@ struct QuoteGroupView: View {
             // 📄 Devis principal
             QuoteHeaderView(
                 quote: quote,
-                onDelete: {
-                    showDeleteConfirmation = true
-                },
+                showDeleteConfirmation: $showDeleteConfirmation,
                 onEdit: {
                     quoteToEdit = quote
                     selectedTab = "devis"
@@ -99,7 +105,7 @@ struct QuoteGroupView: View {
                     icon: "doc.text.fill",
                     number: invoice.invoiceNumber ?? "FACTURE",
                     clientName: invoice.quote?.clientFullName ?? "—",
-                    amount: invoice.totalTTC.formattedCurrency(),
+                    amount: netTotalTTC(for: invoice).formattedCurrency(),
                     date: invoice.date.map { formattedDateFR($0) } ?? "",
                     statusMenu: AnyView(InvoiceStatusMenu(invoice: invoice)),
                     onDelete: {
@@ -144,17 +150,6 @@ struct QuoteGroupView: View {
         .padding()
         .background(RoundedRectangle(cornerRadius: 12).stroke(Color.blue))
         .padding(.horizontal)
-        .alert(isPresented: $showDeleteConfirmation) {
-            Alert(
-                title: Text("Supprimer ce devis ?"),
-                message: Text("Cette action est irréversible."),
-                primaryButton: .destructive(Text("Supprimer")) {
-                    viewContext.delete(quote)
-                    try? viewContext.save()
-                },
-                secondaryButton: .cancel()
-            )
-        }
         .alert(isPresented: $showInvoiceDeleteConfirmation) {
             Alert(
                 title: Text("Supprimer cette facture ?"),
@@ -171,6 +166,7 @@ struct QuoteGroupView: View {
         .popover(isPresented: $showPercentageInput) {
             PercentagePopover(
                 customPercentage: $customPercentage,
+                percentageText: $percentageText,
                 onValidate: {
                     if let type = invoiceToCreateType {
                         let invoice = createInvoice(from: quote, type: type, percentage: customPercentage)
@@ -188,9 +184,68 @@ struct QuoteGroupView: View {
                 isAutoEntrepreneur: companyInfo.legalForm.lowercased().contains("auto")
             )
         }
+        .alert(isPresented: $showDeleteConfirmation) {
+            print("🔔 Alerte affichée !")
+            return Alert(
+                title: Text("Supprimer ce devis ?"),
+                message: Text("Cette action est irréversible."),
+                primaryButton: .destructive(Text("Supprimer")) {
+                    print("❌ Suppression exécutée")
+                    viewContext.delete(quote)
+                    try? viewContext.save()
+                },
+                secondaryButton: .cancel()
+            )
+        }
+    }
+    func netTotalTTC(for invoice: Invoice) -> Double {
+        // Si ce n’est pas une facture finale : totalTTC normal
+        guard invoice.invoiceTypeEnum == .finale,
+              let ids = invoice.deductedInvoiceIDs as? [UUID],
+              let sourceQuote = invoice.quote else {
+            return invoice.totalTTC
+        }
+
+        // Récupère les factures déjà déduites
+        let deducted = sourceQuote.invoicesArray.filter { inv in
+            guard let id = inv.id else { return false }
+            return ids.contains(id)
+        }
+
+        let deductedTotal = deducted.reduce(0.0) { $0 + $1.totalTTC }
+
+        // Total TTC - déductions
+        return invoice.totalTTC - deductedTotal
     }
     func formattedInvoiceAmount(_ invoice: Invoice) -> String {
-        return invoice.totalTTC.formattedCurrency()
+        switch invoice.invoiceTypeEnum {
+        case .finale:
+            // Si les articles sont codés, on les décode et on recalcule
+            if let data = invoice.invoiceArticlesData,
+               let articles = try? JSONDecoder().decode([QuoteArticle].self, from: data) {
+
+                let totalHT = articles
+                    .filter { $0.lineType == .article }
+                    .map { Double($0.quantity) * ($0.unitPrice ?? 0.0) }
+                    .reduce(0, +)
+
+                let remise = invoice.remiseIsPercentage
+                    ? totalHT * invoice.remiseValue
+                    : invoice.remiseAmount
+
+                let htAprèsRemise = totalHT - remise
+                let tva = invoice.companyIsAutoEntrepreneur ? 0 : htAprèsRemise * 0.2
+                let ttc = htAprèsRemise + tva
+
+                return ttc.formattedCurrency()
+            } else {
+                return invoice.totalTTC.formattedCurrency()
+            }
+
+        case .acompte, .intermediaire:
+            let ttc = invoice.partialAmount + invoice.tva
+            return ttc.formattedCurrency()
+        }
     }
 
 
@@ -257,46 +312,7 @@ struct QuoteGroupView: View {
             invoice.totalTTC = totalHTAfterRemise + invoice.tva
 
             invoice.invoiceArticlesData = quote.quoteArticlesData
-            if let previousInvoices = quote.invoices?.allObjects as? [Invoice] {
-                let previousFinalized = previousInvoices.filter { $0 != invoice && $0.isPartial }
 
-                if !previousFinalized.isEmpty,
-                   var existingArticles = try? JSONDecoder().decode([QuoteArticle].self, from: quote.quoteArticlesData ?? Data()) {
-
-                    // 🟨 Ajouter la catégorie "Factures déjà émises"
-                    existingArticles.append(QuoteArticle(
-                        lineType: .category,
-                        comment: "Factures déjà émises"
-                    ))
-
-                    let formatter = DateFormatter()
-                    formatter.dateFormat = "dd/MM/yyyy"
-
-                    for inv in previousFinalized {
-                        let dateStr = formatter.string(from: inv.date ?? Date())
-                        let designation = "Facture N° \(inv.invoiceNumber ?? "") du \(dateStr)"
-                        let article = QuoteArticle(
-                            designation: designation,
-                            quantity: 1, // ✅ important pour que le montant soit pris en compte
-                            unit: "",    // ✅ on laisse vide pour que ça ne s’affiche pas
-                            unitPrice: -(inv.totalTTC), // ✅ montant en négatif
-                            lineType: .article
-                        )
-                        existingArticles.append(article)
-                    }
-
-                    invoice.invoiceArticlesData = try? JSONEncoder().encode(existingArticles)
-                }
-            }
-            // 🔍 Log de vérification
-//            print("""
-//            ✅ Facture finale créée :
-//            - HT : \(invoice.totalHT)
-//            - Remise : \(invoice.remiseAmount)
-//            - HT après remise : \(totalHTAfterRemise)
-//            - TVA : \(invoice.tva)
-//            - TTC : \(invoice.totalTTC)
-//            """)
         }
 
         do {
@@ -318,9 +334,11 @@ struct QuoteGroupView: View {
     }
 }
 
+import SwiftUI
+
 struct QuoteHeaderView: View {
     let quote: QuoteEntity
-    let onDelete: () -> Void
+    @Binding var showDeleteConfirmation: Bool
     let onEdit: () -> Void
 
     var body: some View {
@@ -329,10 +347,12 @@ struct QuoteHeaderView: View {
             number: quote.devisNumber ?? "DEV",
             clientName: quote.clientFullName,
             amount: quote.total.formattedCurrency(),
-          //  date: quote.date?.formatted(date: .abbreviated, time: .omitted) ?? "",
             date: quote.date.map { formattedDateFR($0) } ?? "",
             statusMenu: AnyView(QuoteStatusMenu(quote: quote)),
-            onDelete: onDelete,
+            onDelete: {
+                print("✅ Corbeille devis appuyée")
+                showDeleteConfirmation = true
+            },
             onTap: onEdit
         )
     }
@@ -341,6 +361,7 @@ struct QuoteHeaderView: View {
 
 struct PercentagePopover: View {
     @Binding var customPercentage: Double
+    @Binding var percentageText: String // AJOUTÉ
     let onValidate: () -> Void
     let onCancel: () -> Void
     let quote: QuoteEntity
@@ -352,9 +373,15 @@ struct PercentagePopover: View {
                 .font(.headline)
 
             HStack {
-                TextField("Pourcentage", value: $customPercentage, format: .number)
+                TextField("Pourcentage", text: $percentageText)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                     .frame(width: 80)
+                    .onChange(of: percentageText) { newValue in
+                        let cleaned = newValue.replacingOccurrences(of: ",", with: ".")
+                        if let val = Double(cleaned) {
+                            customPercentage = val
+                        }
+                    }
                 Text("%")
             }
 
@@ -453,7 +480,7 @@ struct DocumentRowView: View {
             .buttonStyle(PlainButtonStyle())
 
             if let onDelete = onDelete {
-                Button(role: .destructive, action: onDelete) {
+                Button(action: { onDelete() }) {
                     Image(systemName: "trash")
                         .foregroundColor(.red)
                 }

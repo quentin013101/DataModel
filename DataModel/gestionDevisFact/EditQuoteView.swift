@@ -8,8 +8,8 @@
 import SwiftUI
 struct EditQuoteView: View {
     @Environment(\.managedObjectContext) var context
-    @Environment(\.dismiss) var dismiss
-
+    @Environment(\.presentationMode) var presentationMode
+    
     @State private var quoteArticles: [QuoteArticle] = []
     @State private var projectName: String = ""
     @State private var clientFirstName: String = ""
@@ -38,10 +38,10 @@ struct EditQuoteView: View {
 
             Button("Enregistrer les modifications") {
                 saveModifications()
-                dismiss()
+                presentationMode.wrappedValue.dismiss()
             }
             Button("Annuler") {
-                dismiss()
+                presentationMode.wrappedValue.dismiss()
             }
 
         }
@@ -73,7 +73,7 @@ struct EditQuoteView: View {
 
         do {
             try context.save()
-            dismiss()
+            presentationMode.wrappedValue.dismiss()
         } catch {
             print("❌ Erreur de sauvegarde : \(error)")
         }

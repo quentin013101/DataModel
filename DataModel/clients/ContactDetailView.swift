@@ -3,7 +3,7 @@ import CoreData
 
 struct ContactDetailView: View {
     @Environment(\.managedObjectContext) private var viewContext
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.presentationMode) private var presentationMode
 
     let contact: Contact
     let civilities = ["M.", "Mme", "Mlle"]
@@ -52,7 +52,7 @@ struct ContactDetailView: View {
                     .font(.title)
                     .bold()
                 Spacer()
-                Button(action: { dismiss() }) {
+                Button(action: { presentationMode.wrappedValue.dismiss() }) {
                     Image(systemName: "xmark.circle.fill")
                         .font(.title)
                         .foregroundColor(.gray)
@@ -85,7 +85,7 @@ struct ContactDetailView: View {
                     VStack(alignment: .leading) {
                         Text("Numéro Fiscal")
                             .frame(width: 120, alignment: .leading)
-                            .bold()
+                           // .bold()
 
                         if clientType == "Entreprise" {
                             TextField("", text: $fiscalNumber)
@@ -120,7 +120,7 @@ struct ContactDetailView: View {
             // 🔹 Boutons en bas
             HStack {
                 // 🔵 Annuler (à gauche)
-                Button(action: { dismiss() }) {
+                Button(action: { presentationMode.wrappedValue.dismiss() }) {
                     Text("Annuler")
                         .bold()
                         .foregroundColor(.blue)
@@ -194,10 +194,10 @@ struct ContactDetailView: View {
         contact.phoneNumber = phoneNumber
         contact.email = email
         contact.fiscalNumber = fiscalNumber
-        
+
         do {
             try viewContext.save()
-            dismiss() // ✅ Fermer après modification
+            presentationMode.wrappedValue.dismiss() // ✅ Compatibilité macOS 11
         } catch {
             print("Erreur lors de l'enregistrement : \(error)")
         }
@@ -206,7 +206,7 @@ struct ContactDetailView: View {
     private func deleteContact() {
         viewContext.delete(contact)
         try? viewContext.save()
-        dismiss()
+        presentationMode.wrappedValue.dismiss() // ✅ Compatibilité macOS 11
     }
 //    // ✅ Composant pour un champ Picker
 //    private func formRowPicker(label: String, selection: Binding<String>, options: [String]) -> some View {

@@ -14,24 +14,37 @@ func saveQuoteToCoreData(
     remiseValue: Double,
     devisNumber: String
 ) {
-    let newQuote = QuoteEntity(context: context)
-    newQuote.id = UUID()
-    newQuote.date = Date()
-    newQuote.clientCivility = clientCivility
-    newQuote.clientFirstName = clientFirstName
-    newQuote.clientLastName = clientLastName
-    newQuote.projectName = projectName
-    newQuote.quoteArticlesData = try? JSONEncoder().encode(quoteArticles)
-    newQuote.sousTotal = sousTotal
-    newQuote.remiseAmount = remiseAmount
-    newQuote.remiseIsPercentage = remiseIsPercentage
-    newQuote.remiseValue = remiseValue
-    newQuote.devisNumber = devisNumber
+    let fetchRequest: NSFetchRequest<QuoteEntity> = QuoteEntity.fetchRequest()
+    fetchRequest.predicate = NSPredicate(format: "devisNumber == %@", devisNumber)
 
     do {
+        let results = try context.fetch(fetchRequest)
+        let quote: QuoteEntity
+        let isNewQuote: Bool
+
+        if let existing = results.first {
+            quote = existing
+            isNewQuote = false
+        } else {
+            quote = QuoteEntity(context: context)
+            quote.id = UUID()
+            quote.date = Date() // ✅ seulement à la création
+            isNewQuote = true
+        }
+
+        quote.clientCivility = clientCivility
+        quote.clientFirstName = clientFirstName
+        quote.clientLastName = clientLastName
+        quote.projectName = projectName
+        quote.quoteArticlesData = try? JSONEncoder().encode(quoteArticles)
+        quote.sousTotal = sousTotal
+        quote.remiseAmount = remiseAmount
+        quote.remiseIsPercentage = remiseIsPercentage
+        quote.remiseValue = remiseValue
+        quote.devisNumber = devisNumber
+
         try context.save()
-        print("✅ Devis sauvegardé dans Core Data")
-        // Le dismiss() ne peut pas être utilisé ici : il doit être appelé dans une View
+        print("✅ Devis \(isNewQuote ? "créé" : "modifié")")
     } catch {
         print("❌ Erreur lors de la sauvegarde : \(error)")
     }

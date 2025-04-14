@@ -2,19 +2,19 @@ import SwiftUI
 
 struct ArticleDetailView: View {
     @Environment(\.managedObjectContext) private var viewContext
-    @Environment(\.dismiss) var dismiss
+    @Environment(\.presentationMode) var presentationMode
 
-    @State private var isEditing = false // 🔹 Active/Désactive la modification
-    @State private var showDeleteAlert = false // 🔹 Gère l'affichage de l'alerte de suppression
+    @State private var isEditing = false
+    @State private var showDeleteAlert = false
 
     var article: Article
 
     var body: some View {
         VStack(alignment: .leading, spacing: 15) {
-            // 🔹 En-tête avec bouton Fermer
+            // En-tête avec bouton Fermer
             HStack {
                 Spacer()
-                Button(action: { dismiss() }) {
+                Button(action: { presentationMode.wrappedValue.dismiss() }) {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundColor(.gray)
                         .font(.title)
@@ -27,8 +27,6 @@ struct ArticleDetailView: View {
                 .bold()
                 .padding(.bottom, 10)
 
-            // 📌 Informations sur l'article
-            // 📌 Informations sur l'article
             VStack(alignment: .leading, spacing: 10) {
                 detailRow(label: "Nom", value: article.name ?? "Non renseigné")
                 detailRow(label: "Type", value: article.type ?? "Non renseigné")
@@ -41,7 +39,6 @@ struct ArticleDetailView: View {
 
             Spacer()
 
-            // 📌 Boutons Modifier et Supprimer
             HStack {
                 Button(action: { isEditing = true }) {
                     Text("Modifier")
@@ -62,13 +59,16 @@ struct ArticleDetailView: View {
                         .background(Color.gray.opacity(0.2))
                         .cornerRadius(5)
                 }
-                .alert("Supprimer cet article ?", isPresented: $showDeleteAlert) {
-                    Button("Annuler", role: .cancel) {}
-                    Button("Supprimer", role: .destructive) {
-                        deleteArticle()
-                    }
-                } message: {
-                    Text("Cette action est irréversible.")
+                // ✅ Alerte compatible macOS 11
+                .alert(isPresented: $showDeleteAlert) {
+                    Alert(
+                        title: Text("Supprimer cet article ?"),
+                        message: Text("Cette action est irréversible."),
+                        primaryButton: .destructive(Text("Supprimer")) {
+                            deleteArticle()
+                        },
+                        secondaryButton: .cancel(Text("Annuler"))
+                    )
                 }
             }
             .padding()
@@ -80,7 +80,6 @@ struct ArticleDetailView: View {
         }
     }
 
-    // 🔹 Fonction pour afficher une ligne de détail
     private func detailRow(label: String, value: String) -> some View {
         HStack {
             Text(label + ":")
@@ -92,12 +91,11 @@ struct ArticleDetailView: View {
         }
     }
 
-    // 🔹 Suppression de l'article
     private func deleteArticle() {
         viewContext.delete(article)
         do {
             try viewContext.save()
-            dismiss()
+            presentationMode.wrappedValue.dismiss()
         } catch {
             print("❌ Erreur lors de la suppression : \(error.localizedDescription)")
         }

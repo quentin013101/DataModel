@@ -13,13 +13,33 @@ struct QuoteListView: View {
     @Binding var quoteToEdit: QuoteEntity?
     @Binding var selectedQuoteForInvoice: QuoteEntity?
     @Binding var invoiceToEdit: Invoice?
+    @State private var searchText: String = ""
 
+//    var groupedQuotes: [(String, [QuoteEntity])] {
+//        let dateFormatter = DateFormatter()
+//        dateFormatter.locale = Locale(identifier: "fr_FR")
+//        dateFormatter.dateFormat = "LLLL yyyy"
+//
+//        let grouped = Dictionary(grouping: quotes) { quote in
+//            dateFormatter.string(from: quote.date ?? Date())
+//        }
+//
+//        return grouped.sorted { $0.key > $1.key }
+//    }
     var groupedQuotes: [(String, [QuoteEntity])] {
         let dateFormatter = DateFormatter()
         dateFormatter.locale = Locale(identifier: "fr_FR")
         dateFormatter.dateFormat = "LLLL yyyy"
 
-        let grouped = Dictionary(grouping: quotes) { quote in
+        // 🔍 Filtres sur recherche
+        let filtered = quotes.filter { quote in
+            searchText.isEmpty ||
+            (quote.projectName?.localizedCaseInsensitiveContains(searchText) ?? false) ||
+            (quote.clientFullName.localizedCaseInsensitiveContains(searchText)) ||
+            (quote.date.map { formattedDateFR($0).localizedCaseInsensitiveContains(searchText) } ?? false)
+        }
+
+        let grouped = Dictionary(grouping: filtered) { quote in
             dateFormatter.string(from: quote.date ?? Date())
         }
 
@@ -27,6 +47,7 @@ struct QuoteListView: View {
     }
 
     var body: some View {
+        
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 20) {
                 ForEach(groupedQuotes, id: \.0) { (month, monthQuotes) in
@@ -44,17 +65,7 @@ struct QuoteListView: View {
         }
     }
 }
-//    func groupQuotesByMonth(quotes: FetchedResults<QuoteEntity>) -> [(String, [QuoteEntity])] {
-//        let dateFormatter = DateFormatter()
-//        dateFormatter.locale = Locale(identifier: "fr_FR")
-//        dateFormatter.dateFormat = "LLLL yyyy"
-//
-//        let grouped = Dictionary(grouping: quotes) { quote in
-//            dateFormatter.string(from: quote.date ?? Date())
-//        }
-//
-//        return grouped.sorted { $0.key > $1.key }
-//    }
+
 
 struct QuoteMonthSection: View {
     let month: String

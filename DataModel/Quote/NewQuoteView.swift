@@ -10,6 +10,7 @@ struct NewQuoteView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.managedObjectContext) private var context
     @Environment(\.dismiss) var dismiss
+    @State private var quoteDate: Date = Date()
     @State private var acompteLabel: String = "Acompte à la signature de"
     @State private var soldeLabel: String = "Solde à la réception du chantier de"
     @State private var hasLoadedQuote = false
@@ -26,6 +27,7 @@ struct NewQuoteView: View {
     @State private var clientStreet: String = ""
     @State private var clientPostalCode: String = ""
     @State private var clientCity: String = ""
+    @State private var deductedInvoices: Set<Invoice> = []
     @State private var quoteArticles: [QuoteArticle] = [] {
         didSet {
             print("🧩 [didSet] quoteArticles a été mis à jour.")
@@ -134,7 +136,44 @@ struct NewQuoteView: View {
 
                     ScrollView(.vertical, showsIndicators: false) {
                         VStack {
-                            renderSheetView()
+//                            renderSheetView()
+                            A4SheetView(
+                                showHeader: true,
+                                showFooter: true,
+                                showSignature: true,
+                                globalQuoteArticles: quoteArticles,
+                                isInvoice: false,
+                                invoiceType: nil,
+                                invoice: nil,
+                                sourceQuote: nil,
+                                deductedInvoices: $deductedInvoices,
+                                selectedClient: $selectedClient,
+                                quoteArticles: $quoteArticles,
+                                clientProjectAddress: $clientProjectAddress,
+                                projectName: $projectName,
+                                companyInfo: $companyInfo,
+                                clientStreet: $clientStreet,
+                                clientPostalCode: $clientPostalCode,
+                                clientCity: $clientCity,
+                                showingClientSelection: $showingClientSelection,
+                                showingArticleSelection: $showingArticleSelection,
+                                devisNumber: $devisNumber,
+                                documentNumber: $documentNumber,
+                                signatureBlockHeight: $signatureBlockHeight,
+                                sousTotal: $sousTotal,
+                                remiseAmount: $remiseAmount,
+                                remiseIsPercentage: $remiseIsPercentage,
+                                remiseValue: $remiseValue,
+                                acompteText: $acompteText,
+                                soldeText: $soldeText,
+                                acomptePercentage: $acomptePercentage,
+                                soldePercentage: $soldePercentage,
+                                showSoldeLine: $showSoldeLine,
+                                showAcompteLine: $showAcompteLine,
+                                acompteLabel: $acompteLabel,
+                                soldeLabel: $soldeLabel,
+                                quoteDate: $quoteDate
+                            )
                             .background(
                                 GeometryReader { proxy in
                                     Color.clear
@@ -161,6 +200,17 @@ struct NewQuoteView: View {
                                 print("- \(qa.designation) — \(qa.quantity) — \(qa.unitPrice)")
                             }
                         }
+                        .onChange(of: clientProjectAddress) { newValue in
+                            let lines = newValue.split(separator: "\n")
+                            if lines.count > 0 {
+                                clientStreet = String(lines[0])
+                            }
+                            if lines.count > 1 {
+                                let postalCity = lines[1].split(separator: " ")
+                                clientPostalCode = postalCity.first.map(String.init) ?? ""
+                                clientCity = postalCity.dropFirst().joined(separator: " ")
+                            }
+                        }
                     }
                     .frame(width: 595, height: 842)
                     .scaleEffect(scaleFactor, anchor: .center)
@@ -169,50 +219,71 @@ struct NewQuoteView: View {
                     .clipped()
                     .position(x: geo.size.width / 2, y: geo.size.height / 2)
                 }
+  
             }
-            .popover(isPresented: $showingClientSelection) {
-                ClientSelectionWrapper(
-                    selectedClient: $selectedClient,
-                    clientProjectAddress: $clientProjectAddress,
-                    showingClientSelection: $showingClientSelection
-                )
-            }
-            .popover(isPresented: $showingArticleSelection) {
-                NavigationView {
-                    ArticleSelectionView { article, quantity in
-                        let newQA = QuoteArticle(
-                            id: UUID(),
-                            designation: article.name ?? "",
-                            quantity: 1, // ou Int(article.quantity) si stocké dans CoreData
-                            unit: article.unit ?? "",
-                            unitPrice: (article.price as? NSNumber)?.doubleValue ?? 0.0
-                        )
-                        quoteArticles.append(newQA)
-                    }
-                    .environment(\.managedObjectContext, viewContext)
-                    .toolbar(content: articleToolbar)
-                }
-                .frame(width: 400, height: 600)
-            }
+            
+//            .sheet(isPresented: $showingArticleSelection) {
+//                Text("Test Sheet")
+//            }
+
             .alert("Nom du projet", isPresented: $showingProjectNameAlert) {
                 TextField("Nom du projet", text: $projectName)
                 Button("OK") {}
             } message: {
                 Text("Veuillez saisir le nom du projet.")
             }
+//            .onAppear {
+//                if let quote = existingQuote, !hasLoadedQuote {
+//                    print("📦 Chargement du devis existant depuis onAppear")
+//                    hasLoadedQuote = true
+//                    loadQuote(from: quote)
+//                }
+//
+//                if existingQuote == nil && projectName.isEmpty {
+//                    showingProjectNameAlert = true
+//                }
+//                
+//            }
             .onAppear {
                 if let quote = existingQuote, !hasLoadedQuote {
-                    print("📦 Chargement du devis existant depuis onAppear")
                     hasLoadedQuote = true
-                    loadQuote(from: quote)
+                    DispatchQueue.main.async {
+                        loadQuote(from: quote)
+                    }
                 }
 
                 if existingQuote == nil && projectName.isEmpty {
-                    showingProjectNameAlert = true
+                    DispatchQueue.main.async {
+                        showingProjectNameAlert = true
+                    }
                 }
             }
-        }
 
+        }
+        .popover(isPresented: $showingClientSelection) {
+            ClientSelectionWrapper(
+                selectedClient: $selectedClient,
+                clientProjectAddress: $clientProjectAddress,
+                showingClientSelection: $showingClientSelection
+            )
+        }
+        .popover(isPresented: $showingArticleSelection) {
+            NavigationView {
+                ArticleSelectionView { article, quantity in
+                    let newQA = QuoteArticle(
+                        id: UUID(),
+                        designation: article.name ?? "",
+                        quantity: 1, // ou Int(article.quantity) si stocké dans CoreData
+                        unit: article.unit ?? "",
+                        unitPrice: (article.price as? NSNumber)?.doubleValue ?? 0.0
+                    )
+                    quoteArticles.append(newQA)
+                }
+                .environment(\.managedObjectContext, viewContext)
+                .toolbar(content: articleToolbar)
+            }
+            .frame(width: 400, height: 600)
+        }
     }
     
     @ViewBuilder
@@ -231,6 +302,9 @@ struct NewQuoteView: View {
             globalQuoteArticles: quoteArticles,
             isInvoice: false,
             invoiceType: nil,
+            invoice: nil,
+            sourceQuote: nil,
+            deductedInvoices: $deductedInvoices,
             selectedClient: $selectedClient,
             quoteArticles: $quoteArticles,
             clientProjectAddress: $clientProjectAddress,
@@ -255,7 +329,8 @@ struct NewQuoteView: View {
             showSoldeLine: $showSoldeLine,
             showAcompteLine: $showAcompteLine,
             acompteLabel: $acompteLabel,
-            soldeLabel: $soldeLabel
+            soldeLabel: $soldeLabel,
+            quoteDate: $quoteDate
         )
     }
     @ToolbarContentBuilder
@@ -269,7 +344,14 @@ struct NewQuoteView: View {
     func exportPDF() {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.pdf]
-        panel.nameFieldStringValue = "Devis.pdf"
+
+        let fullName = [
+            selectedClient?.firstName ?? "",
+            selectedClient?.lastName ?? ""
+        ].filter { !$0.isEmpty }.joined(separator: " ")
+
+        let number = devisNumber.isEmpty ? "DEV-???" : devisNumber
+        panel.nameFieldStringValue = "\(fullName)-\(number).pdf"
 
         panel.begin { response in
             if response == .OK, let url = panel.url {
@@ -385,6 +467,9 @@ struct NewQuoteView: View {
                 globalQuoteArticles: quoteArticles,
                 isInvoice: false,
                 invoiceType: nil,
+                invoice: nil,
+                sourceQuote: nil,
+                deductedInvoices: $deductedInvoices,
                 selectedClient: $selectedClient,
                 quoteArticles: .constant(pageArticles),
                // quoteArticles: $quoteArticles,
@@ -410,7 +495,8 @@ struct NewQuoteView: View {
                 showSoldeLine: $showSoldeLine,
                 showAcompteLine: $showAcompteLine,
                 acompteLabel: $acompteLabel,
-                soldeLabel: $soldeLabel
+                soldeLabel: $soldeLabel,
+                quoteDate: $quoteDate
             )
             .environment(\.isPrinting, true)
             .frame(width: pageWidth, height: pageHeight)
@@ -473,20 +559,22 @@ struct NewQuoteView: View {
         do {
             let results = try context.fetch(fetchRequest)
             let quoteToUpdate: QuoteEntity
+            let isNewQuote: Bool
 
             if let existingQuote = existingQuote {
-                // Cas d'édition : on met à jour ce devis
                 quoteToUpdate = existingQuote
+                isNewQuote = false
             } else if let found = results.first {
-                // Un devis avec le même numéro existe déjà → on le met à jour
                 quoteToUpdate = found
+                isNewQuote = false
             } else {
-                // Cas de création : on crée un nouveau devis
                 quoteToUpdate = QuoteEntity(context: context)
                 quoteToUpdate.id = UUID()
-                quoteToUpdate.date = Date()
+                quoteToUpdate.date = Date() // ✅ Date uniquement si création
+                isNewQuote = true
             }
-            
+
+
             // Assurer que les champs individuels sont bien sauvegardés
             quoteToUpdate.clientStreet = clientStreet
             quoteToUpdate.clientPostalCode = clientPostalCode
@@ -516,12 +604,11 @@ struct NewQuoteView: View {
             quoteToUpdate.soldePercentage = soldePercentage
             quoteToUpdate.soldeLabel = soldeLabel
             quoteToUpdate.showSoldeLine = showSoldeLine
-            
-            // Sauvegarder les autres valeurs de l'adresse dans Core Data
-            quoteToUpdate.clientProjectAddress = clientProjectAddress // Si tu veux aussi sauvegarder la version entière de l'adresse
 
+            quoteToUpdate.clientProjectAddress = clientProjectAddress
+            quoteToUpdate.date = quoteDate
             try context.save()
-            print("✅ Devis enregistré (créé ou mis à jour)")
+            print("✅ Devis \(isNewQuote ? "créé" : "mis à jour")")
         } catch {
             print("❌ Erreur lors de la sauvegarde : \(error)")
         }
@@ -544,6 +631,7 @@ struct NewQuoteView: View {
         soldePercentage = quote.soldePercentage
         soldeLabel = quote.soldeLabel ?? "Solde à la réception du chantier de"
         showSoldeLine = quote.showSoldeLine
+        quoteDate = quote.date ?? Date()
         
         // Mise à jour de l'adresse projet
         clientProjectAddress = "\(quote.clientStreet ?? "")\n\(quote.clientPostalCode ?? "") \(quote.clientCity ?? "")"
@@ -562,8 +650,7 @@ struct NewQuoteView: View {
         temporaryClient.postalCode = quote.clientPostalCode
         temporaryClient.city = quote.clientCity
         selectedClient = temporaryClient
-
-        // Pas besoin de mettre à jour l'adresse ici à nouveau, c'est déjà fait ci-dessus
+        clientProjectAddress = "\(clientStreet)\n\(clientPostalCode) \(clientCity)"        // Pas besoin de mettre à jour l'adresse ici à nouveau, c'est déjà fait ci-dessus
     }
 
 }

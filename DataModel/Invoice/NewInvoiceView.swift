@@ -34,6 +34,8 @@ struct NewInvoiceView: View {
     @State private var showingClientSelection = false
     @State private var showingArticleSelection = false
     @State private var documentHeight: CGFloat = 842
+    @State private var deductedInvoices: Set<Invoice> = []
+    @State private var quoteDate: Date = Date()
 
     init(invoice: Invoice, sourceQuote: QuoteEntity? = nil, selectedTab: Binding<String>) {
         self.invoice = invoice
@@ -104,6 +106,9 @@ struct NewInvoiceView: View {
                                 globalQuoteArticles: quoteArticles,
                                 isInvoice: true,
                                 invoiceType: invoice.invoiceTypeEnum,
+                                invoice: invoice,
+                                sourceQuote: sourceQuote,
+                                deductedInvoices: $deductedInvoices,
                                 selectedClient: $selectedClient,
                                 quoteArticles: $quoteArticles,
                                 clientProjectAddress: $clientProjectAddress,
@@ -128,7 +133,8 @@ struct NewInvoiceView: View {
                                 showSoldeLine: $showSoldeLine,
                                 showAcompteLine: $showAcompteLine,
                                 acompteLabel: $acompteLabel,
-                                soldeLabel: $soldeLabel
+                                soldeLabel: $soldeLabel,
+                                quoteDate: $quoteDate
                             )
                             .background(
                                 GeometryReader { proxy in
@@ -163,8 +169,27 @@ struct NewInvoiceView: View {
                let articles = try? JSONDecoder().decode([QuoteArticle].self, from: data) {
                 self.quoteArticles = articles
             }
+            if invoice.invoiceTypeEnum == .finale {
+                if let sourceQuote = sourceQuote {
+                    let allInvoices = sourceQuote.invoicesArray
+                    let idsToRestore = invoice.deductedInvoiceIDs as? [UUID] ?? []
+                    self.deductedInvoices = Set(allInvoices.filter { inv in
+                        guard let id = inv.id else { return false }
+                        return idsToRestore.contains(id)
+                    })
+                }
+            }
 
             self.documentNumber = invoice.invoiceNumber ?? "FAC-???"
+            // 🗓️ Ne modifie pas la date existante automatiquement
+            if let existingDate = invoice.date {
+                self.quoteDate = existingDate
+            } else {
+                self.quoteDate = Date()
+                invoice.date = self.quoteDate
+                try? viewContext.save()
+            }
+            
         }
         .popover(isPresented: $showingArticleSelection) {
             NavigationView {
@@ -193,33 +218,56 @@ struct NewInvoiceView: View {
         }
     }
     func saveInvoice() {
+        // 🧾 Infos générales
         invoice.projectName = projectName
         invoice.invoiceNumber = documentNumber
-//        invoice.sousTotal = sousTotal
-//        invoice.remiseAmount = remiseAmount
-//        invoice.remiseIsPercentage = remiseIsPercentage
-//        invoice.remiseValue = remiseValue
-//        invoice.acompteText = acompteText
-//        invoice.acomptePercentage = acomptePercentage
-//        invoice.acompteLabel = acompteLabel
-//        invoice.showAcompteLine = showAcompteLine
-//        invoice.soldeText = soldeText
-//        invoice.soldePercentage = soldePercentage
-//        invoice.soldeLabel = soldeLabel
-//        invoice.showSoldeLine = showSoldeLine
         invoice.clientStreet = clientStreet
         invoice.clientPostalCode = clientPostalCode
         invoice.clientCity = clientCity
         invoice.clientProjectAddress = clientProjectAddress
+        invoice.date = quoteDate
 
-        // 🧾 Articles
+        // 🧾 Articles actuels
         invoice.invoiceArticlesData = try? JSONEncoder().encode(quoteArticles)
+        //factures déja émises sélectionnées
+        if invoice.invoiceTypeEnum == .finale {
+            let ids = deductedInvoices.compactMap { $0.id }
+            invoice.deductedInvoiceIDs = ids as NSArray
+        }
+        // 🔢 Remise (copiée uniquement si finale)
+        if invoice.invoiceTypeEnum == .finale {
+            invoice.remiseAmount = remiseAmount
+            invoice.remiseIsPercentage = remiseIsPercentage
+            invoice.remiseValue = remiseValue
+        }
 
-        // 💶 Totaux
-        invoice.totalHT = computeTotalHT()
-        invoice.tva = invoice.totalHT * 0.2
-        invoice.totalTTC = invoice.totalHT + invoice.tva
+        // 💶 Calcul des totaux
+        if invoice.invoiceTypeEnum == .finale {
+            // 👉 Total HT = total des lignes article
+            let totalHT = quoteArticles
+                .filter { $0.lineType == .article }
+                .map { Double($0.quantity) * ($0.unitPrice ?? 0.0) }
+                .reduce(0, +)
+            invoice.totalHT = totalHT
 
+            // 👉 Remise
+            let remise = invoice.remiseIsPercentage
+                ? totalHT * invoice.remiseValue / 100
+                : invoice.remiseAmount
+
+            // 👉 TVA & TTC
+            let htAfterRemise = totalHT - remise
+            invoice.tva = invoice.companyIsAutoEntrepreneur ? 0 : htAfterRemise * 0.2
+            invoice.totalTTC = htAfterRemise + invoice.tva
+
+        } else {
+            // ✅ Pour acompte / intermédiaire : utiliser partialAmount
+            invoice.totalHT = invoice.partialAmount
+            invoice.tva = invoice.companyIsAutoEntrepreneur ? 0 : invoice.totalHT * 0.2
+            invoice.totalTTC = invoice.totalHT + invoice.tva
+        }
+
+        // 💾 Sauvegarde Core Data
         do {
             try viewContext.save()
             print("✅ Facture enregistrée")
@@ -286,12 +334,19 @@ struct NewInvoiceView: View {
     func exportPDF() {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.pdf]
-        panel.nameFieldStringValue = "Facture.pdf"
+
+        let fullName = [
+            invoice.quote?.clientFirstName ?? "",
+            invoice.quote?.clientLastName ?? ""
+        ].filter { !$0.isEmpty }.joined(separator: " ")
+
+        let number = invoice.invoiceNumber ?? "FACTURE-???"
+        panel.nameFieldStringValue = "\(fullName)-\(number).pdf"
 
         panel.begin { response in
             if response == .OK, let url = panel.url {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    ensureSignatureBlockFits() // ✅ Ajout ici
+                    ensureSignatureBlockFits()
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                         renderA4SheetToPDF(saveURL: url)
                     }
@@ -396,6 +451,9 @@ struct NewInvoiceView: View {
                 globalQuoteArticles: quoteArticles,
                 isInvoice: true,
                 invoiceType: invoice.invoiceTypeEnum,
+                invoice: invoice,
+                sourceQuote: sourceQuote,
+                deductedInvoices: $deductedInvoices,
                 selectedClient: $selectedClient,
                 quoteArticles: .constant(pageArticles),
                 clientProjectAddress: $clientProjectAddress,
@@ -420,7 +478,8 @@ struct NewInvoiceView: View {
                 showSoldeLine: $showSoldeLine,
                 showAcompteLine: $showAcompteLine,
                 acompteLabel: $acompteLabel,
-                soldeLabel: $soldeLabel
+                soldeLabel: $soldeLabel,
+                quoteDate: $quoteDate
             )
             .environment(\.isPrinting, true)
             .frame(width: pageWidth, height: pageHeight)

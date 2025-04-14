@@ -21,7 +21,7 @@ struct SidebarView: View {
 
                 Section(header: Text("PILOTAGE")) {
                     SidebarButton(title: "Tableau de bord", tab: "dashboard", selectedTab: $selectedTab)
-                    SidebarButton(title: "Tableau d’analyse", tab: "analysis", selectedTab: $selectedTab)
+                  //  SidebarButton(title: "Tableau d’analyse", tab: "analysis", selectedTab: $selectedTab)
                 }
             }
             .listStyle(SidebarListStyle())
@@ -64,7 +64,7 @@ struct SidebarButton: View {
             HStack {
                 Text(title)
                     .foregroundColor(selectedTab == tab ? .blue : .primary)
-                    .bold(selectedTab == tab)
+                   // .bold(selectedTab == tab)
                 Spacer()
             }
             .padding(.vertical, 10)

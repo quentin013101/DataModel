@@ -34,6 +34,7 @@
         <attribute name="clientProjectAddress" optional="YES" attributeType="String"/>
         <attribute name="clientStreet" optional="YES" attributeType="String"/>
         <attribute name="date" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="deductedInvoiceIDs" optional="YES" attributeType="Transformable" valueTransformerName="UUIDArrayTransformer" customClassName="NSArray"/>
         <attribute name="id" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="invoiceArticlesData" optional="YES" attributeType="Binary"/>
         <attribute name="invoiceNote" optional="YES" attributeType="String"/>

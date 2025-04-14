@@ -3,7 +3,7 @@ import CoreData
 
 struct AddContactView: View {
     @Environment(\.managedObjectContext) private var viewContext
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.presentationMode) private var presentationMode
 
     @State private var civility: String = "M."
     @State private var firstName: String = ""
@@ -25,7 +25,6 @@ struct AddContactView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            // ✅ Centrer le titre principal
             HStack {
                 Spacer()
                 Text("Nouveau Client")
@@ -36,7 +35,6 @@ struct AddContactView: View {
             }
 
             Form {
-                // ✅ Type de Client
                 Section {
                     HStack {
                         Text("Type")
@@ -51,19 +49,16 @@ struct AddContactView: View {
                     }
                 }
 
-                // ✅ Centrer l'en-tête "Informations Personnelles"
                 Section(header: sectionHeader("Informations Personnelles")) {
                     formRowPicker(label: "Civilité", selection: $civility, options: civilities)
                     formRow(label: "Prénom", text: $firstName)
                     formRow(label: "Nom *", text: $lastName)
 
-                    // ✅ Afficher Numéro Fiscal uniquement si clientType == "Entreprise"
                     if clientType == "Entreprise" {
                         formRow(label: "Numéro Fiscal", text: $fiscalNumber)
                     }
                 }
 
-                // ✅ Centrer l'en-tête "Coordonnées"
                 Section(header: sectionHeader("Coordonnées")) {
                     formRow(label: "Adresse", text: $street)
                     formRowWithError(label: "Code Postal", text: $postalCode, error: $postalCodeError)
@@ -77,12 +72,10 @@ struct AddContactView: View {
             }
             .padding(.horizontal, -10)
 
-            // ✅ Boutons alignés
             HStack {
                 Button("Annuler") {
-                    dismiss()
+                    presentationMode.wrappedValue.dismiss()
                 }
-                .bold()
                 .foregroundColor(.red)
 
                 Spacer()
@@ -99,7 +92,6 @@ struct AddContactView: View {
         .padding()
     }
 
-    // ✅ Fonction pour centrer les en-têtes des sections
     private func sectionHeader(_ title: String) -> some View {
         HStack {
             Spacer()
@@ -111,7 +103,6 @@ struct AddContactView: View {
         }
     }
 
-    // ✅ Vérifie que le formulaire est valide
     private func isFormValid() -> Bool {
         guard !lastName.isEmpty else { return false }
         return (postalCode.isEmpty || validatePostalCode()) &&
@@ -164,17 +155,14 @@ struct AddContactView: View {
 
         do {
             try viewContext.save()
-            
-            // ✅ Fermer la sheet après l'ajout du contact
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                dismiss()
+                presentationMode.wrappedValue.dismiss()
             }
         } catch {
             print("Erreur lors de la sauvegarde : \(error)")
         }
     }
 
-    // ✅ Composant pour un champ classique
     private func formRow(label: String, text: Binding<String>) -> some View {
         HStack {
             Text(label)
@@ -185,7 +173,6 @@ struct AddContactView: View {
         }
     }
 
-    // ✅ Composant pour un champ avec message d'erreur
     private func formRowWithError(label: String, text: Binding<String>, error: Binding<String?>) -> some View {
         HStack {
             Text(label)
@@ -203,7 +190,6 @@ struct AddContactView: View {
         }
     }
 
-    // ✅ Composant pour un champ Picker
     private func formRowPicker(label: String, selection: Binding<String>, options: [String]) -> some View {
         HStack {
             Text(label)

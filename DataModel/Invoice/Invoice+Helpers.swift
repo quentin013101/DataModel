@@ -8,7 +8,27 @@
 import SwiftUI
 import Foundation
 
-
+enum InvoiceStatus: String, CaseIterable {
+    case brouillon = "Brouillon"
+    case envoyee = "Envoyée"
+    case payee = "Payée"
+    
+    var icon: String {
+        switch self {
+        case .brouillon: return "pencil"
+        case .envoyee: return "envelope"
+        case .payee: return "checkmark.seal"
+        }
+    }
+    
+    var color: Color {
+        switch self {
+        case .brouillon: return .gray
+        case .envoyee: return .blue
+        case .payee: return .green
+        }
+    }
+}
 extension Invoice {
     var statusEnum: QuoteStatus {
         QuoteStatus(rawValue: status ?? "") ?? .brouillon
@@ -29,6 +49,17 @@ extension Invoice {
 
     var isFinalInvoice: Bool {
         invoiceTypeEnum == .finale
+    }
+    var montantRéelTTC: Double {
+        if invoiceTypeEnum == .finale {
+            return totalTTC
+        } else {
+            return partialAmount + tva
+        }
+    }
+    var companyIsAutoEntrepreneur: Bool {
+        let legalForm = CompanyInfo.loadFromUserDefaults().legalForm
+        return legalForm.lowercased().contains("auto")
     }
 //    var decodedQuoteArticles: [QuoteArticle] {
 //        guard let data = invoiceArticlesData else { return [] }
