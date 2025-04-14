@@ -52,8 +52,10 @@ struct NewInvoiceView: View {
                         .padding(6)
                         .cornerRadius(8)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.blue)
+                .buttonStyle(DefaultButtonStyle()) // ou PlainButtonStyle si besoin
+                .foregroundColor(.white)
+                .background(Color.blue)
+                .cornerRadius(6)
                 .help("Export PDF")
 
                 Button(action: previewPDF) {
@@ -61,8 +63,10 @@ struct NewInvoiceView: View {
                         .padding(6)
                         .cornerRadius(8)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.blue)
+                .buttonStyle(DefaultButtonStyle()) // ou PlainButtonStyle si besoin
+                .foregroundColor(.white)
+                .background(Color.blue)
+                .cornerRadius(6)
                 .help("Prévisualisation PDF")
 
                 Button {
@@ -73,9 +77,10 @@ struct NewInvoiceView: View {
                         .padding(6)
                         .cornerRadius(8)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.green)
-
+                .buttonStyle(DefaultButtonStyle()) // ou PlainButtonStyle si besoin
+                .foregroundColor(.white)
+                .background(Color.green)
+                .cornerRadius(6)
                 Button {
                     selectedTab = "devisFactures"
                 } label: {
@@ -83,8 +88,10 @@ struct NewInvoiceView: View {
                         .padding(6)
                         .cornerRadius(8)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.red)
+                .buttonStyle(DefaultButtonStyle()) // ou PlainButtonStyle si besoin
+                .foregroundColor(.white)
+                .background(Color.red)
+                .cornerRadius(6)
             }
             .padding()
            // .background(Color(NSColor.controlBackgroundColor)) // ✅ même fond que dans NewQuoteView

@@ -20,7 +20,7 @@ struct AcomptePopoverView: View {
                 Text("%")
             }
 
-            Text("Montant estimé : \(montant.formatted(.currency(code: "EUR")))")
+            Text("Montant estimé : \(currencyFormat(montant))")
                 .font(.caption)
                 .padding(.top, 4)
 
@@ -30,6 +30,13 @@ struct AcomptePopoverView: View {
 //            .buttonStyle(.borderedProminent)
 //            .padding(.top, 8)
         }
+    }
+    func currencyFormat(_ value: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "EUR"
+        formatter.locale = Locale(identifier: "fr_FR")
+        return formatter.string(from: NSNumber(value: value)) ?? "\(value) €"
     }
 }
 

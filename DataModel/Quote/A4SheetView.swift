@@ -1243,7 +1243,7 @@ struct A4SheetView: View {
                     }
                 }
                 Divider()
-                Button("Supprimer la ligne", role: .destructive) {
+                Button("Supprimer la ligne") {
                     onDelete()
                 }
             }
@@ -1369,9 +1369,12 @@ struct A4SheetView: View {
 
                     // ✅ Quantité
                     HStack(spacing: 0) {
-                        TextField("", value: $quoteArticle.quantity, format: .number)
-                            .textFieldStyle(.plain)
-                            .multilineTextAlignment(.center)
+                        TextField("", text: Binding(
+                            get: { String(quoteArticle.quantity) },
+                            set: { quoteArticle.quantity = Int($0) ?? 0 }
+                        ))
+                        .textFieldStyle(.plain)
+                        .multilineTextAlignment(.center)
 
                         Text(quoteArticle.unit)
                             .lineLimit(1)
@@ -1385,9 +1388,16 @@ struct A4SheetView: View {
 
                     // ✅ Prix unitaire
                     HStack(spacing: 0) {
-                        TextField("", value: $quoteArticle.unitPrice, format: .number.precision(.fractionLength(2)))
-                            .textFieldStyle(.plain)
-                            .multilineTextAlignment(.trailing)
+                        TextField("", text: Binding(
+                            get: { String(format: "%.2f", quoteArticle.unitPrice) },
+                            set: {
+                                // Remplacement virgule → point pour compatibilité FR
+                                let cleaned = $0.replacingOccurrences(of: ",", with: ".")
+                                quoteArticle.unitPrice = Double(cleaned) ?? 0.0
+                            }
+                        ))
+                        .textFieldStyle(.plain)
+                        .multilineTextAlignment(.trailing)
 
                         Text(" €")
                             .foregroundColor(.gray)

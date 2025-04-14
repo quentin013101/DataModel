@@ -37,13 +37,15 @@ struct RemisePopupView: View {
 
             TextField("Entrer la remise", text: $inputValue)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
-                .font(.system(size: 16)) // ✅ Augmente la taille du texte saisi
-                .frame(height: 40) // ✅ Augmente la hauteur du champ
+                .font(.system(size: 16))
+                .frame(height: 40)
                 .padding()
                 .onChange(of: inputValue) { newValue in
-                    updateEquivalentValue() // ✅ Met à jour l’indicateur dynamiquement
+                    updateEquivalentValue()
                 }
-                .onSubmit { applyRemise() } // ✅ Validation avec la touche Entrée
+                .onReceive(NotificationCenter.default.publisher(for: NSText.didEndEditingNotification)) { _ in
+                    applyRemise()
+                }
 
             // ✅ Affichage de l'équivalence sous le champ de saisie (EN GRAS + PLUS GRAND)
             if !equivalentValue.isEmpty {

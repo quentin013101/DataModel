@@ -9,7 +9,7 @@ struct NewQuoteView: View {
     @Binding var selectedTab: String // ⬅️ Ajout ici
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.managedObjectContext) private var context
-    @Environment(\.dismiss) var dismiss
+    @Environment(\.presentationMode) var presentationMode
     @State private var quoteDate: Date = Date()
     @State private var acompteLabel: String = "Acompte à la signature de"
     @State private var soldeLabel: String = "Solde à la réception du chantier de"
@@ -70,31 +70,30 @@ struct NewQuoteView: View {
     }
     var body: some View {
         VStack {
-            HStack {
+            HStack(spacing: 12) {
                 Button(action: exportPDF) {
                     Label("Export PDF", systemImage: "square.and.arrow.up")
                         .padding(6)
-                        .cornerRadius(8)
+                        .background(Color.blue.opacity(0.2))
+                        .foregroundColor(.blue)
+                        .cornerRadius(6)
                 }
-
-                .buttonStyle(.borderedProminent)
-                .tint(.blue)
                 .help("Export PDF")
 
                 Button(action: previewPDF) {
                     Label("Prévisualiser", systemImage: "eye.circle")
                         .padding(6)
-                        .cornerRadius(8)
+                        .background(Color.blue.opacity(0.2))
+                        .foregroundColor(.blue)
+                        .cornerRadius(6)
                 }
-
-                .buttonStyle(.borderedProminent)
-                .tint(.blue)
                 .help("Prévisualisation PDF")
-                Button {
+
+                Button(action: {
                     saveQuoteToCoreData(
                         context: context,
                         quoteArticles: quoteArticles,
-                        clientCivility:selectedClient?.civility ?? "",
+                        clientCivility: selectedClient?.civility ?? "",
                         clientProjectAddress: clientProjectAddress,
                         clientFirstName: selectedClient?.firstName ?? "",
                         clientLastName: selectedClient?.lastName ?? "",
@@ -105,25 +104,24 @@ struct NewQuoteView: View {
                         remiseValue: remiseValue,
                         devisNumber: devisNumber
                     )
-                    selectedTab = "devisFactures" // ⬅️ Revenir à la liste
-                } label: {
+                    selectedTab = "devisFactures"
+                }) {
                     Label("Enregistrer", systemImage: "externaldrive.fill.badge.checkmark")
                         .padding(6)
-                    //.background(Color.green.opacity(0.2))
-                        .cornerRadius(8)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.green)
-                Button {
-                    selectedTab = "devisFactures"
-                } label: {
-                    Label("Annuler", systemImage: "xmark.circle")
-                        .padding(6)
-                        .cornerRadius(8)
+                        .background(Color.green.opacity(0.2))
+                        .foregroundColor(.green)
+                        .cornerRadius(6)
                 }
 
-                .buttonStyle(.borderedProminent)
-                .tint(.red)
+                Button(action: {
+                    selectedTab = "devisFactures"
+                }) {
+                    Label("Annuler", systemImage: "xmark.circle")
+                        .padding(6)
+                        .background(Color.red.opacity(0.2))
+                        .foregroundColor(.red)
+                        .cornerRadius(6)
+                }
             }
             .padding()
 
@@ -226,11 +224,12 @@ struct NewQuoteView: View {
 //                Text("Test Sheet")
 //            }
 
-            .alert("Nom du projet", isPresented: $showingProjectNameAlert) {
-                TextField("Nom du projet", text: $projectName)
-                Button("OK") {}
-            } message: {
-                Text("Veuillez saisir le nom du projet.")
+            .alert(isPresented: $showingProjectNameAlert) {
+                Alert(
+                    title: Text("Nom du projet"),
+                    message: Text("Veuillez saisir le nom du projet."),
+                    dismissButton: .default(Text("OK"))
+                )
             }
 //            .onAppear {
 //                if let quote = existingQuote, !hasLoadedQuote {

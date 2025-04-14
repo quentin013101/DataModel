@@ -3,7 +3,8 @@ import CoreData
 
 struct ClientSelectionView: View {
     @Environment(\.managedObjectContext) private var viewContext
-    @Environment(\.dismiss) private var dismiss
+   // @Environment(\.dismiss) private var dismiss
+    var onClientSelected: (() -> Void)?
 
     @Binding var selectedClient: Contact?
     @Binding var clientProjectAddress: String
@@ -38,7 +39,7 @@ struct ClientSelectionView: View {
                         let postalCityLine = "\(client.postalCode ?? "") \(client.city ?? "")"
                         clientProjectAddress = streetLine + "\n" + postalCityLine
 
-                        dismiss()
+                        onClientSelected?()
                     }) {
                         VStack(alignment: .leading) {
                             Text("\(client.firstName ?? "") \(client.lastName ?? "")")
@@ -63,7 +64,7 @@ struct ClientSelectionView: View {
             AddContactView().environment(\.managedObjectContext, viewContext)
         }
         .onTapGesture {
-            dismiss() // ✅ Ferme la fenêtre si on clique en dehors
+            onClientSelected?()
         }
     }
 

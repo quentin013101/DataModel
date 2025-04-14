@@ -77,7 +77,18 @@ extension Double {
 }
 func defaultInfoText(for invoice: Invoice) -> String {
     let quoteNumber = invoice.referenceQuoteNumber ?? "—"
-    let quoteDate = invoice.referenceQuoteDate?.formatted(date: .abbreviated, time: .omitted) ?? "—"
+
+    let quoteDate: String
+    if let date = invoice.referenceQuoteDate {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "fr_FR")
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        quoteDate = formatter.string(from: date)
+    } else {
+        quoteDate = "—"
+    }
+
     let total = invoice.referenceQuoteTotal.formattedCurrency()
     let percent = Int(invoice.partialPercentage)
 

@@ -2,7 +2,7 @@ import SwiftUI
 
 struct ParametresView: View {
     // MARK: - Environnement et États
-    @Environment(\.dismiss) private var dismiss
+    //@Environment(\.dismiss) private var dismiss
 
     @State private var selectedImage: NSImage?
     @State private var selectedSignature: NSImage?
@@ -134,7 +134,7 @@ struct ParametresView: View {
                 // Boutons d'action centrés
                 HStack {
                     
-                    Button("Fermer") { dismiss() }
+                    Button("Fermer") { NSApp.keyWindow?.close() }
                         .padding()
                         .background(Color.gray.opacity(0.2))
                         .foregroundColor(.white)
@@ -270,7 +270,7 @@ struct ParametresView: View {
         
         // Les modifications sont enregistrées dans UserDefaults
         print("✅ Paramètres sauvegardés")
-        dismiss()
+        NSApp.keyWindow?.close()
     }
 
     /// Supprime le logo enregistré.
