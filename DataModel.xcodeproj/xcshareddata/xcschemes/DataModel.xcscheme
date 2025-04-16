@@ -16,7 +16,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "920ABC732D70D69F00D760E4"
-               BuildableName = "DataModel.app"
+               BuildableName = "Factur&apos;Zen.app"
                BlueprintName = "DataModel"
                ReferencedContainer = "container:DataModel.xcodeproj">
             </BuildableReference>
@@ -69,7 +69,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "920ABC732D70D69F00D760E4"
-            BuildableName = "DataModel.app"
+            BuildableName = "Factur&apos;Zen.app"
             BlueprintName = "DataModel"
             ReferencedContainer = "container:DataModel.xcodeproj">
          </BuildableReference>
@@ -86,7 +86,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "920ABC732D70D69F00D760E4"
-            BuildableName = "DataModel.app"
+            BuildableName = "Factur&apos;Zen.app"
             BlueprintName = "DataModel"
             ReferencedContainer = "container:DataModel.xcodeproj">
          </BuildableReference>

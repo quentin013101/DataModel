@@ -20,15 +20,6 @@ struct AcomptePopoverView: View {
                 Text("%")
             }
 
-            Text("Montant estimé : \(currencyFormat(montant))")
-                .font(.caption)
-                .padding(.top, 4)
-
-//            Button("Valider") {
-//                resultText = "\(title) de \(Int(percentage)) %, soit \(montant.formatted(.currency(code: "EUR")))"
-//            }
-//            .buttonStyle(.borderedProminent)
-//            .padding(.top, 8)
         }
     }
     func currencyFormat(_ value: Double) -> String {

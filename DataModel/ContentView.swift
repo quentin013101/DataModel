@@ -28,7 +28,7 @@ struct ContentView: View {
             ArticleListView(selectedTab: $selectedTab)
         case "devis":
             NewQuoteView(existingQuote: quoteToEdit, selectedTab: $selectedTab)
-                //.onAppear { quoteToEdit = nil }
+                .onAppear { quoteToEdit = nil }
         case "facture":
             if let invoice = invoiceToEdit {
                 NewInvoiceView(invoice: invoice, sourceQuote: selectedQuoteForInvoice, selectedTab: $selectedTab)

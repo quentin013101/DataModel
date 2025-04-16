@@ -176,6 +176,7 @@ struct A4SheetView: View {
             for q in new {
                 print("- \(q.designation) — \(q.quantity) — \(q.unitPrice)")
             }
+            
             // ⬇️ AJOUTE CECI
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                 print("🧪 [retardé] Contenu réel de quoteArticles (vérif après édition) :")
@@ -198,11 +199,35 @@ struct A4SheetView: View {
             soldeText = "\(soldeLabel) \(Int(soldePercentage)) %, soit \(String(format: "%.2f", netAPayer * soldePercentage / 100)) €"
         }
         .onAppear {
-            if isInvoice && isFinalInvoice,
-               let sourceQuote = sourceQuote {
-                let all = sourceQuote.invoicesArray
-                availableInvoices = all.filter { $0 != invoice }
+            print("✅ A4SheetView loaded with isInvoice = \(isInvoice), isFinalInvoice = \(isFinalInvoice)")
+            print("📦 sourceQuote is nil? \(sourceQuote == nil)")
+            print("📦 invoice is nil? \(invoice == nil)")
+            print("📦 quoteArticles count: \(quoteArticles.count)")
+
+            if isInvoice && isFinalInvoice {
+                DispatchQueue.main.async {
+                    guard let quote = sourceQuote else {
+                        print("⚠️ sourceQuote est nil")
+                        return
+                    }
+
+                    guard let rawInvoices = quote.invoices as? Set<Invoice> else {
+                        print("❌ quote.invoices n’est pas un Set<Invoice> ou est nil")
+                        return
+                    }
+
+                    let all = rawInvoices.sorted { ($0.date ?? Date()) < ($1.date ?? Date()) }
+                    availableInvoices = all.filter { $0 != invoice }
+
+                    print("✅ Factures disponibles : \(availableInvoices.count)")
+                }
             }
+        }
+        .onAppear {
+            print("✅ A4SheetView affiché")
+            print("📦 isInvoice = \(isInvoice), invoiceType = \(String(describing: invoiceType))")
+            print("📦 sourceQuote = \(String(describing: sourceQuote))")
+            print("📦 invoice = \(String(describing: invoice))")
         }
     }
     
@@ -949,22 +974,45 @@ struct A4SheetView: View {
     // MARK: - 7) Footer
     
     private var footerSection: some View {
-        VStack(spacing: 6) {
-            Rectangle()
-                .fill(Color.gray.opacity(0.3))
-                .frame(height: 1)
-                .padding(.horizontal, 16)
+        VStack(spacing: 3) {
+//            Rectangle()
+//                .fill(Color.gray.opacity(0.3))
+//                .frame(height: 1)
+//                .padding(.horizontal, 16)
+            PDFBoxView(backgroundColor: NSColor.gray.withAlphaComponent(0.8))
+                .frame(width: 560, height: 1)
             
-            let isAuto = companyInfo.legalForm.lowercased().contains("auto")
-            Text(isAuto ? "TVA non applicable (auto-entrepreneur)" : "TVA 20% ...")
+//            let isAuto = companyInfo.legalForm.lowercased().contains("auto")
+//            Text(isAuto ? "TVA non applicable (auto-entrepreneur)" : "TVA 20% ...")
+//                .font(.footnote)
+//            
+            // Ligne 1 : nom - téléphone - email
+            HStack(spacing: 12) {
+                Text(companyInfo.companyName)
+                Text("—")
+                Text(companyInfo.phone)
+                Text("—")
+                Text(companyInfo.email)
+            }
+            .font(.footnote)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity)
+
+            // Ligne 2 : forme juridique - siret
+            HStack(spacing: 12) {
+                Text("Forme juridique : \(companyInfo.legalForm)")
+                Text("—")
+                Text("SIRET : \(companyInfo.siret)")
+            }
+            .font(.footnote)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity)
+
+            // Ligne 3 : IBAN
+            Text("IBAN : \(companyInfo.iban)")
                 .font(.footnote)
-            
-            Text("Forme juridique : \(companyInfo.legalForm)")
-                .font(.footnote)
-            Text("SIRET : \(companyInfo.siret) — APE : \(companyInfo.apeCode)")
-                .font(.footnote)
-            Text("TVA : \(companyInfo.vatNumber) — IBAN : \(companyInfo.iban)")
-                .font(.footnote)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
         }
         .padding(.bottom, 16)
     }

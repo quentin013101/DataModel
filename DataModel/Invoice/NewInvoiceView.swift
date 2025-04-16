@@ -44,6 +44,7 @@ struct NewInvoiceView: View {
     }
 
     var body: some View {
+
         VStack(spacing: 0) {
             // 🔵 Bandeau de boutons
             HStack {
@@ -101,9 +102,6 @@ struct NewInvoiceView: View {
                 Color.gray.opacity(0.2).ignoresSafeArea()
 
                 GeometryReader { geo in
-                    let scaleFactor = geo.size.height / 842
-                    let scaledWidth = 595 * scaleFactor
-
                     ScrollView(.vertical, showsIndicators: false) {
                         VStack {
                             A4SheetView(
@@ -158,9 +156,7 @@ struct NewInvoiceView: View {
                         }
                         .frame(width: 595, height: max(documentHeight, 842), alignment: .top)
                     }
-                    .frame(width: 595, height: 842)
-                    .scaleEffect(scaleFactor, anchor: .center)
-                    .frame(width: scaledWidth, height: geo.size.height, alignment: .center)
+                    .frame(width: geo.size.width, height: geo.size.height)
                     .background(Color.gray.opacity(0.1))
                     .clipped()
                     .position(x: geo.size.width / 2, y: geo.size.height / 2)
@@ -168,14 +164,31 @@ struct NewInvoiceView: View {
             }
         }
         .onAppear {
+            print("🧾 NewInvoiceView — .onAppear")
+
+            // ✅ Vérifie que la facture source existe
             if let quote = sourceQuote {
+                print("✅ sourceQuote OK")
                 loadQuoteData(from: quote)
+
+            } else {
+                print("⚠️ sourceQuote est nil")
             }
 
-            if let data = invoice.invoiceArticlesData,
-               let articles = try? JSONDecoder().decode([QuoteArticle].self, from: data) {
-                self.quoteArticles = articles
+            // ✅ Essaye de décoder les articles
+            if let data = invoice.invoiceArticlesData {
+                do {
+                    let decodedArticles = try JSONDecoder().decode([QuoteArticle].self, from: data)
+                    self.quoteArticles = decodedArticles
+                    print("✅ Articles chargés : \(decodedArticles.count)")
+                } catch {
+                    print("❌ Erreur de décodage des articles : \(error)")
+                }
+            } else {
+                print("⚠️ Aucun article stocké")
             }
+
+            // ✅ Si c’est une facture finale, essaye de restaurer les factures déjà émises
             if invoice.invoiceTypeEnum == .finale {
                 if let sourceQuote = sourceQuote {
                     let allInvoices = sourceQuote.invoicesArray
@@ -184,11 +197,14 @@ struct NewInvoiceView: View {
                         guard let id = inv.id else { return false }
                         return idsToRestore.contains(id)
                     })
+                    print("✅ Factures déduites restaurées : \(deductedInvoices.count)")
+                } else {
+                    print("⚠️ sourceQuote est nil pour une facture finale !")
                 }
             }
 
             self.documentNumber = invoice.invoiceNumber ?? "FAC-???"
-            // 🗓️ Ne modifie pas la date existante automatiquement
+
             if let existingDate = invoice.date {
                 self.quoteDate = existingDate
             } else {
@@ -196,8 +212,43 @@ struct NewInvoiceView: View {
                 invoice.date = self.quoteDate
                 try? viewContext.save()
             }
-            
         }
+//        .onAppear {
+//            printInvoiceDebug()
+//            if let quote = sourceQuote {
+//                loadQuoteData(from: quote)
+//            }
+//
+//            if let data = invoice.invoiceArticlesData,
+//               let articles = try? JSONDecoder().decode([QuoteArticle].self, from: data) {
+//                self.quoteArticles = articles
+//            }
+//            if invoice.invoiceTypeEnum == .finale,
+//               let sourceQuote = sourceQuote,
+//               let rawSet = sourceQuote.invoices as? Set<Invoice> {
+//                
+//                let allInvoices = rawSet.sorted { ($0.date ?? Date()) < ($1.date ?? Date()) }
+//                let idsToRestore = invoice.deductedInvoiceIDs as? [UUID] ?? []
+//                
+//                self.deductedInvoices = Set(allInvoices.filter { inv in
+//                    guard let id = inv.id else { return false }
+//                    return idsToRestore.contains(id)
+//                })
+//            } else {
+//                print("⚠️ Impossible de charger les factures liées à sourceQuote")
+//            }
+//
+//            self.documentNumber = invoice.invoiceNumber ?? "FAC-???"
+//            // 🗓️ Ne modifie pas la date existante automatiquement
+//            if let existingDate = invoice.date {
+//                self.quoteDate = existingDate
+//            } else {
+//                self.quoteDate = Date()
+//                invoice.date = self.quoteDate
+//                try? viewContext.save()
+//            }
+//            
+//        }
         .popover(isPresented: $showingArticleSelection) {
             NavigationView {
                 ArticleSelectionView { article, quantity in
@@ -215,6 +266,14 @@ struct NewInvoiceView: View {
             }
             .frame(width: 400, height: 600)
         }
+        .onAppear {
+            print("🧾 [DEBUG] NewInvoiceView chargé")
+            print("📦 invoiceType: \(invoice.invoiceType ?? "nil")")
+            print("📦 invoice.invoiceArticlesData est nil ? \(invoice.invoiceArticlesData == nil)")
+            print("📦 invoice.deductedInvoiceIDs : \(invoice.deductedInvoiceIDs as? [UUID] ?? [])")
+            print("📦 sourceQuote est nil ? \(sourceQuote == nil)")
+            print("📦 quoteArticles.count : \(quoteArticles.count)")
+        }
     }
     @ToolbarContentBuilder
     private func articleToolbar() -> some ToolbarContent {
@@ -223,6 +282,14 @@ struct NewInvoiceView: View {
                 showingArticleSelection = false
             }
         }
+    }
+    func printInvoiceDebug() {
+        print("🧾 invoice.id = \(invoice.id?.uuidString ?? "nil")")
+        print("🧾 invoice.date = \(String(describing: invoice.date))")
+        print("🧾 invoice.invoiceNumber = \(invoice.invoiceNumber ?? "nil")")
+        print("🧾 invoice.invoiceType = \(invoice.invoiceType ?? "nil")")
+        print("🧾 invoice.invoiceArticlesData = \(invoice.invoiceArticlesData != nil ? "OK" : "nil")")
+        print("🧾 invoice.deductedInvoiceIDs = \(invoice.deductedInvoiceIDs as? [UUID] ?? [])")
     }
     func saveInvoice() {
         // 🧾 Infos générales
@@ -323,12 +390,7 @@ struct NewInvoiceView: View {
            let decoded = try? JSONDecoder().decode([QuoteArticle].self, from: data) {
             quoteArticles = decoded
         }
-        
-
-//        print("📦 Facture chargée pour devis \(devisNumber)")
-//        print("📄 Articles : \(quoteArticles.count)")
-//        print("👤 Client : \(tmpClient.fullName)")
-//        print("🧾 Numéro facture : \(documentNumber)")
+    
     }
 
     func generateNewInvoiceNumber() -> String {

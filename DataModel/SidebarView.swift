@@ -4,6 +4,7 @@ struct SidebarView: View {
     @Binding var selectedTab: String
     
     @State private var showingSettings = false // ✅ État pour afficher les paramètres
+    @State private var quoteCreationID = UUID()
 
     var body: some View {
         VStack {
@@ -45,11 +46,11 @@ struct SidebarView: View {
             .buttonStyle(PlainButtonStyle())
             .padding()
             .sheet(isPresented: $showingSettings) {
-                ParametresView()
+                ParametresView(isPresented: $showingSettings)
                     .frame(minWidth: 500, maxWidth: 700, minHeight: 400, maxHeight: 600)
             }
         }
-        .frame(minWidth: 250)
+        .frame(minWidth: 220)
     }
 }
 
@@ -64,7 +65,10 @@ struct SidebarButton: View {
             HStack {
                 Text(title)
                     .foregroundColor(selectedTab == tab ? .blue : .primary)
-                   // .bold(selectedTab == tab)
+                    .lineLimit(1)                      // ✅ Coupe proprement si nécessaire
+                    .truncationMode(.tail)            // ✅ Ajoute "…" si trop long
+                    .layoutPriority(1)                // ✅ Priorité d'affichage
+
                 Spacer()
             }
             .padding(.vertical, 10)

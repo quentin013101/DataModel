@@ -13,6 +13,8 @@ struct NewQuoteView: View {
     @State private var quoteDate: Date = Date()
     @State private var acompteLabel: String = "Acompte à la signature de"
     @State private var soldeLabel: String = "Solde à la réception du chantier de"
+    @State private var showingProjectNameSheet = false
+    @State private var tempProjectName = ""
     @State private var hasLoadedQuote = false
     @State private var acompteText: String = ""
     @State private var soldeText: String = ""
@@ -74,22 +76,34 @@ struct NewQuoteView: View {
                 Button(action: exportPDF) {
                     Label("Export PDF", systemImage: "square.and.arrow.up")
                         .padding(6)
-                        .background(Color.blue.opacity(0.2))
-                        .foregroundColor(.blue)
-                        .cornerRadius(6)
+//                        .background(Color.blue.opacity(0.2))
+//                        .foregroundColor(.blue)
+//                        .cornerRadius(6)
                 }
+                .buttonStyle(DefaultButtonStyle()) // ou PlainButtonStyle si besoin
+                .foregroundColor(.white)
+                .background(Color.blue)
+                .cornerRadius(6)
                 .help("Export PDF")
 
                 Button(action: previewPDF) {
                     Label("Prévisualiser", systemImage: "eye.circle")
                         .padding(6)
-                        .background(Color.blue.opacity(0.2))
-                        .foregroundColor(.blue)
-                        .cornerRadius(6)
+//                        .background(Color.blue.opacity(0.2))
+//                        .foregroundColor(.blue)
+//                        .cornerRadius(6)
                 }
+                .buttonStyle(DefaultButtonStyle()) // ou PlainButtonStyle si besoin
+                .foregroundColor(.white)
+                .background(Color.blue)
+                .cornerRadius(6)
                 .help("Prévisualisation PDF")
 
                 Button(action: {
+                    if clientProjectAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        clientProjectAddress = "\(clientStreet)\n\(clientPostalCode) \(clientCity)"
+                    }
+                    print("💬 clientProjectAddress: \(clientProjectAddress)")
                     saveQuoteToCoreData(
                         context: context,
                         quoteArticles: quoteArticles,
@@ -102,26 +116,36 @@ struct NewQuoteView: View {
                         remiseAmount: remiseAmount,
                         remiseIsPercentage: remiseIsPercentage,
                         remiseValue: remiseValue,
-                        devisNumber: devisNumber
+                        devisNumber: devisNumber,
+                        clientStreet: clientStreet,
+                        clientPostalCode: clientPostalCode,
+                        clientCity: clientCity,
+                        quoteDate: quoteDate
                     )
                     selectedTab = "devisFactures"
                 }) {
                     Label("Enregistrer", systemImage: "externaldrive.fill.badge.checkmark")
                         .padding(6)
-                        .background(Color.green.opacity(0.2))
-                        .foregroundColor(.green)
-                        .cornerRadius(6)
+//                        .background(Color.green.opacity(0.2))
+//                        .foregroundColor(.green)
+//                        .cornerRadius(6)
                 }
+                .buttonStyle(DefaultButtonStyle()) // ou PlainButtonStyle si besoin
+                .foregroundColor(.white)
+                .background(Color.green)
+                .cornerRadius(6)
 
-                Button(action: {
+                Button {
                     selectedTab = "devisFactures"
-                }) {
+                } label: {
                     Label("Annuler", systemImage: "xmark.circle")
                         .padding(6)
-                        .background(Color.red.opacity(0.2))
-                        .foregroundColor(.red)
-                        .cornerRadius(6)
+                        .cornerRadius(8)
                 }
+                .buttonStyle(DefaultButtonStyle()) // ou PlainButtonStyle si besoin
+                .foregroundColor(.white)
+                .background(Color.red)
+                .cornerRadius(6)
             }
             .padding()
 
@@ -129,93 +153,130 @@ struct NewQuoteView: View {
                 Color.gray.opacity(0.2).ignoresSafeArea()
 
                 GeometryReader { geo in
-                    let scaleFactor = geo.size.height / 842
-                    let scaledWidth = 595 * scaleFactor
+                    if #available(macOS 13, *) {
+                        let scaleFactor = geo.size.height / 842
+                        let scaledWidth = 595 * scaleFactor
 
-                    ScrollView(.vertical, showsIndicators: false) {
-                        VStack {
-//                            renderSheetView()
-                            A4SheetView(
-                                showHeader: true,
-                                showFooter: true,
-                                showSignature: true,
-                                globalQuoteArticles: quoteArticles,
-                                isInvoice: false,
-                                invoiceType: nil,
-                                invoice: nil,
-                                sourceQuote: nil,
-                                deductedInvoices: $deductedInvoices,
-                                selectedClient: $selectedClient,
-                                quoteArticles: $quoteArticles,
-                                clientProjectAddress: $clientProjectAddress,
-                                projectName: $projectName,
-                                companyInfo: $companyInfo,
-                                clientStreet: $clientStreet,
-                                clientPostalCode: $clientPostalCode,
-                                clientCity: $clientCity,
-                                showingClientSelection: $showingClientSelection,
-                                showingArticleSelection: $showingArticleSelection,
-                                devisNumber: $devisNumber,
-                                documentNumber: $documentNumber,
-                                signatureBlockHeight: $signatureBlockHeight,
-                                sousTotal: $sousTotal,
-                                remiseAmount: $remiseAmount,
-                                remiseIsPercentage: $remiseIsPercentage,
-                                remiseValue: $remiseValue,
-                                acompteText: $acompteText,
-                                soldeText: $soldeText,
-                                acomptePercentage: $acomptePercentage,
-                                soldePercentage: $soldePercentage,
-                                showSoldeLine: $showSoldeLine,
-                                showAcompteLine: $showAcompteLine,
-                                acompteLabel: $acompteLabel,
-                                soldeLabel: $soldeLabel,
-                                quoteDate: $quoteDate
-                            )
-                            .background(
-                                GeometryReader { proxy in
-                                    Color.clear
-                                        .onAppear {
-                                            documentHeight = proxy.size.height
-                                        }
-                                        .onChange(of: proxy.size.height) { newHeight in
-                                            documentHeight = newHeight
-                                        }
-                                }
-                            )
-                            .onChange(of: quoteArticles) { new in
-                                print("📦 quoteArticles a changé (depuis NewQuoteView) :")
-                                for q in new {
-                                    print("- \(q.designation) — \(q.quantity) — \(q.unitPrice)")
-                                }
+                        ScrollView(.vertical, showsIndicators: false) {
+                            VStack {
+                                A4SheetView(
+                                    showHeader: true,
+                                    showFooter: true,
+                                    showSignature: true,
+                                    globalQuoteArticles: quoteArticles,
+                                    isInvoice: false,
+                                    invoiceType: nil,
+                                    invoice: nil,
+                                    sourceQuote: nil,
+                                    deductedInvoices: $deductedInvoices,
+                                    selectedClient: $selectedClient,
+                                    quoteArticles: $quoteArticles,
+                                    clientProjectAddress: $clientProjectAddress,
+                                    projectName: $projectName,
+                                    companyInfo: $companyInfo,
+                                    clientStreet: $clientStreet,
+                                    clientPostalCode: $clientPostalCode,
+                                    clientCity: $clientCity,
+                                    showingClientSelection: $showingClientSelection,
+                                    showingArticleSelection: $showingArticleSelection,
+                                    devisNumber: $devisNumber,
+                                    documentNumber: $documentNumber,
+                                    signatureBlockHeight: $signatureBlockHeight,
+                                    sousTotal: $sousTotal,
+                                    remiseAmount: $remiseAmount,
+                                    remiseIsPercentage: $remiseIsPercentage,
+                                    remiseValue: $remiseValue,
+                                    acompteText: $acompteText,
+                                    soldeText: $soldeText,
+                                    acomptePercentage: $acomptePercentage,
+                                    soldePercentage: $soldePercentage,
+                                    showSoldeLine: $showSoldeLine,
+                                    showAcompteLine: $showAcompteLine,
+                                    acompteLabel: $acompteLabel,
+                                    soldeLabel: $soldeLabel,
+                                    quoteDate: $quoteDate
+                                )
+                                .background(
+                                    GeometryReader { proxy in
+                                        Color.clear
+                                            .onAppear {
+                                                documentHeight = proxy.size.height
+                                            }
+                                            .onChange(of: proxy.size.height) { newHeight in
+                                                documentHeight = newHeight
+                                            }
+                                    }
+                                )
+                                .frame(width: 595, height: documentHeight)
                             }
-                            .frame(width: 595, height: documentHeight)
+                            .frame(width: 595, height: max(documentHeight, 842), alignment: .top)
                         }
-                        .frame(width: 595, height: max(documentHeight, 842), alignment: .top)
-                        .onChange(of: quoteArticles) { updated in
-                            print("🧩 NewQuoteView — quoteArticles a changé (depuis A4Sheet) :")
-                            for qa in updated {
-                                print("- \(qa.designation) — \(qa.quantity) — \(qa.unitPrice)")
+                        .frame(width: 595, height: 842)
+                        .scaleEffect(scaleFactor, anchor: .center)
+                        .frame(width: scaledWidth, height: geo.size.height, alignment: .center)
+                        .background(Color.gray.opacity(0.1))
+                        .clipped()
+                        .position(x: geo.size.width / 2, y: geo.size.height / 2)
+                    } else {
+                        // macOS 12 et en dessous – pas de scaleEffect, ni de position(), car crash potentiel
+                        ScrollView(.vertical, showsIndicators: false) {
+                            VStack {
+                                A4SheetView(
+                                    showHeader: true,
+                                    showFooter: true,
+                                    showSignature: true,
+                                    globalQuoteArticles: quoteArticles,
+                                    isInvoice: false,
+                                    invoiceType: nil,
+                                    invoice: nil,
+                                    sourceQuote: nil,
+                                    deductedInvoices: $deductedInvoices,
+                                    selectedClient: $selectedClient,
+                                    quoteArticles: $quoteArticles,
+                                    clientProjectAddress: $clientProjectAddress,
+                                    projectName: $projectName,
+                                    companyInfo: $companyInfo,
+                                    clientStreet: $clientStreet,
+                                    clientPostalCode: $clientPostalCode,
+                                    clientCity: $clientCity,
+                                    showingClientSelection: $showingClientSelection,
+                                    showingArticleSelection: $showingArticleSelection,
+                                    devisNumber: $devisNumber,
+                                    documentNumber: $documentNumber,
+                                    signatureBlockHeight: $signatureBlockHeight,
+                                    sousTotal: $sousTotal,
+                                    remiseAmount: $remiseAmount,
+                                    remiseIsPercentage: $remiseIsPercentage,
+                                    remiseValue: $remiseValue,
+                                    acompteText: $acompteText,
+                                    soldeText: $soldeText,
+                                    acomptePercentage: $acomptePercentage,
+                                    soldePercentage: $soldePercentage,
+                                    showSoldeLine: $showSoldeLine,
+                                    showAcompteLine: $showAcompteLine,
+                                    acompteLabel: $acompteLabel,
+                                    soldeLabel: $soldeLabel,
+                                    quoteDate: $quoteDate
+                                )
+                                .background(
+                                    GeometryReader { proxy in
+                                        Color.clear
+                                            .onAppear {
+                                                documentHeight = proxy.size.height
+                                            }
+                                            .onChange(of: proxy.size.height) { newHeight in
+                                                documentHeight = newHeight
+                                            }
+                                    }
+                                )
+                                .frame(width: 595, height: documentHeight)
                             }
+                            .frame(width: 595, height: max(documentHeight, 842), alignment: .top)
                         }
-                        .onChange(of: clientProjectAddress) { newValue in
-                            let lines = newValue.split(separator: "\n")
-                            if lines.count > 0 {
-                                clientStreet = String(lines[0])
-                            }
-                            if lines.count > 1 {
-                                let postalCity = lines[1].split(separator: " ")
-                                clientPostalCode = postalCity.first.map(String.init) ?? ""
-                                clientCity = postalCity.dropFirst().joined(separator: " ")
-                            }
-                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color.gray.opacity(0.1))
+                        .padding()
                     }
-                    .frame(width: 595, height: 842)
-                    .scaleEffect(scaleFactor, anchor: .center)
-                    .frame(width: scaledWidth, height: geo.size.height, alignment: .center)
-                    .background(Color.gray.opacity(0.1))
-                    .clipped()
-                    .position(x: geo.size.width / 2, y: geo.size.height / 2)
                 }
   
             }
@@ -224,13 +285,13 @@ struct NewQuoteView: View {
 //                Text("Test Sheet")
 //            }
 
-            .alert(isPresented: $showingProjectNameAlert) {
-                Alert(
-                    title: Text("Nom du projet"),
-                    message: Text("Veuillez saisir le nom du projet."),
-                    dismissButton: .default(Text("OK"))
-                )
-            }
+//            .alert(isPresented: $showingProjectNameAlert) {
+//                Alert(
+//                    title: Text("Nom du projet"),
+//                    message: Text("Veuillez saisir le nom du projet."),
+//                    dismissButton: .default(Text("OK"))
+//                )
+//            }
 //            .onAppear {
 //                if let quote = existingQuote, !hasLoadedQuote {
 //                    print("📦 Chargement du devis existant depuis onAppear")
@@ -251,13 +312,32 @@ struct NewQuoteView: View {
                     }
                 }
 
+                // ✅ Si c’est un nouveau devis : on construit l’adresse une fois
+                if existingQuote == nil && clientProjectAddress.isEmpty,
+                   !clientStreet.isEmpty || !clientPostalCode.isEmpty || !clientCity.isEmpty {
+                    clientProjectAddress = "\(clientStreet)\n\(clientPostalCode) \(clientCity)"
+                }
+
+                // ✅ Ou si nom du chantier manquant
                 if existingQuote == nil && projectName.isEmpty {
                     DispatchQueue.main.async {
-                        showingProjectNameAlert = true
+                        tempProjectName = projectName
+                        showingProjectNameSheet = true
                     }
                 }
             }
 
+        }
+        .onChange(of: selectedClient) { newClient in
+            guard let client = newClient else { return }
+
+            // Met à jour les champs individuels
+            clientStreet = client.street ?? ""
+            clientPostalCode = client.postalCode ?? ""
+            clientCity = client.city ?? ""
+
+            // 🔁 Force la mise à jour pour que SwiftUI considère que le champ a "changé"
+            clientProjectAddress = "\(clientStreet)\n\(clientPostalCode) \(clientCity)"
         }
         .popover(isPresented: $showingClientSelection) {
             ClientSelectionWrapper(
@@ -283,7 +363,38 @@ struct NewQuoteView: View {
             }
             .frame(width: 400, height: 600)
         }
+        .sheet(isPresented: $showingProjectNameSheet) {
+            VStack(spacing: 20) {
+                Text("Nom du projet")
+                    .font(.title2)
+                    .bold()
+
+                TextField("Nom du projet", text: $tempProjectName)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .frame(width: 300)
+
+                HStack {
+                    Button("Annuler") {
+                        showingProjectNameSheet = false
+                    }
+
+                    Spacer()
+
+                    Button("Valider") {
+                        if !tempProjectName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            projectName = tempProjectName
+                        }
+                        showingProjectNameSheet = false
+                    }
+                    .keyboardShortcut(.defaultAction)
+                }
+                .padding(.horizontal)
+            }
+            .padding()
+            .frame(width: 400)
+        }
     }
+    
     
     @ViewBuilder
     private func renderSheetView() -> some View {
@@ -549,9 +660,12 @@ struct NewQuoteView: View {
         remiseAmount: Double,
         remiseIsPercentage: Bool,
         remiseValue: Double,
-        devisNumber: String
+        devisNumber: String,
+        clientStreet: String,
+        clientPostalCode: String,
+        clientCity: String,
+        quoteDate: Date
     ) {
-        // Chercher s'il existe déjà un devis avec ce numéro
         let fetchRequest: NSFetchRequest<QuoteEntity> = QuoteEntity.fetchRequest()
         fetchRequest.predicate = NSPredicate(format: "devisNumber == %@", devisNumber)
 
@@ -569,43 +683,44 @@ struct NewQuoteView: View {
             } else {
                 quoteToUpdate = QuoteEntity(context: context)
                 quoteToUpdate.id = UUID()
-                quoteToUpdate.date = Date() // ✅ Date uniquement si création
+                quoteToUpdate.date = quoteDate
                 isNewQuote = true
             }
 
-
-            // Assurer que les champs individuels sont bien sauvegardés
-            quoteToUpdate.clientStreet = clientStreet
-            quoteToUpdate.clientPostalCode = clientPostalCode
-            if let phone = selectedClient?.phoneNumber, !phone.isEmpty {
-                quoteToUpdate.clientPhone = phone
-            }
-            if let email = selectedClient?.email, !email.isEmpty {
-                quoteToUpdate.clientEmail = email
-            }
-            quoteToUpdate.clientCity = clientCity
             quoteToUpdate.clientCivility = clientCivility
             quoteToUpdate.clientFirstName = clientFirstName
             quoteToUpdate.clientLastName = clientLastName
+            quoteToUpdate.clientProjectAddress = clientProjectAddress
+            quoteToUpdate.clientStreet = clientStreet
+            quoteToUpdate.clientPostalCode = clientPostalCode
+            quoteToUpdate.clientCity = clientCity
             quoteToUpdate.projectName = projectName
+
             quoteToUpdate.quoteArticlesData = try? JSONEncoder().encode(quoteArticles)
             quoteToUpdate.sousTotal = sousTotal
             quoteToUpdate.remiseAmount = remiseAmount
             quoteToUpdate.remiseIsPercentage = remiseIsPercentage
             quoteToUpdate.remiseValue = remiseValue
             quoteToUpdate.devisNumber = devisNumber
+
             quoteToUpdate.acompteText = acompteText
             quoteToUpdate.acomptePercentage = acomptePercentage
             quoteToUpdate.acompteLabel = acompteLabel
             quoteToUpdate.showAcompteLine = showAcompteLine
-
             quoteToUpdate.soldeText = soldeText
             quoteToUpdate.soldePercentage = soldePercentage
             quoteToUpdate.soldeLabel = soldeLabel
             quoteToUpdate.showSoldeLine = showSoldeLine
-
-            quoteToUpdate.clientProjectAddress = clientProjectAddress
             quoteToUpdate.date = quoteDate
+
+            // Données de contact facultatives
+            if let phone = selectedClient?.phoneNumber, !phone.isEmpty {
+                quoteToUpdate.clientPhone = phone
+            }
+            if let email = selectedClient?.email, !email.isEmpty {
+                quoteToUpdate.clientEmail = email
+            }
+
             try context.save()
             print("✅ Devis \(isNewQuote ? "créé" : "mis à jour")")
         } catch {
@@ -662,6 +777,9 @@ struct ClientSelectionWrapper: View {
     var body: some View {
         NavigationView {
             ClientSelectionView(
+                onClientSelected: {
+                    showingClientSelection = false // ✅ ferme la popover dès sélection
+                },
                 selectedClient: $selectedClient,
                 clientProjectAddress: $clientProjectAddress
             )
@@ -675,11 +793,6 @@ struct ClientSelectionWrapper: View {
             }
         }
         .frame(width: 400, height: 500)
-        .onDisappear {
-            if let client = selectedClient {
-                clientProjectAddress = "\(client.street ?? "")\n\(client.postalCode ?? "") \(client.city ?? "")"
-            }
-        }
     }
 }
 extension Notification.Name {

@@ -24,7 +24,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		920ABC742D70D69F00D760E4 /* DataModel.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DataModel.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		920ABC742D70D69F00D760E4 /* Factur'Zen.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Factur'Zen.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		920ABC8A2D70D6A000D760E4 /* DataModelTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DataModelTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		920ABC942D70D6A000D760E4 /* DataModelUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DataModelUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -140,7 +140,7 @@
 		920ABC752D70D69F00D760E4 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				920ABC742D70D69F00D760E4 /* DataModel.app */,
+				920ABC742D70D69F00D760E4 /* Factur'Zen.app */,
 				920ABC8A2D70D6A000D760E4 /* DataModelTests.xctest */,
 				920ABC942D70D6A000D760E4 /* DataModelUITests.xctest */,
 			);
@@ -169,7 +169,7 @@
 			packageProductDependencies = (
 			);
 			productName = DataModel;
-			productReference = 920ABC742D70D69F00D760E4 /* DataModel.app */;
+			productReference = 920ABC742D70D69F00D760E4 /* Factur'Zen.app */;
 			productType = "com.apple.product-type.application";
 		};
 		920ABC892D70D6A000D760E4 /* DataModelTests */ = {
@@ -459,6 +459,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Factur'Zen";
+				"INFOPLIST_KEY_CFBundleDisplayName[sdk=macosx*]" = "Factur'Zen";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.business";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -468,7 +469,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 11.5;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = Facturation.DataModel;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = "Factur'Zen";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 			};
@@ -490,6 +491,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Factur'Zen";
+				"INFOPLIST_KEY_CFBundleDisplayName[sdk=macosx*]" = "Factur'Zen";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.business";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -499,7 +501,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 11.5;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = Facturation.DataModel;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = "Factur'Zen";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 			};

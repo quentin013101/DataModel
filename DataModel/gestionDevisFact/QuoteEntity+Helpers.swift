@@ -45,8 +45,11 @@ extension QuoteEntity {
     }
 
     var invoicesArray: [Invoice] {
-        let set = invoices as? Set<Invoice> ?? []
-        return set.sorted { ($0.date ?? .distantPast) < ($1.date ?? .distantPast) }
+        guard let rawSet = invoices as? Set<Invoice> else {
+            print("⚠️ invoices is not a Set<Invoice>")
+            return []
+        }
+        return rawSet.sorted { ($0.date ?? Date()) < ($1.date ?? Date()) }
     }
 
     func invoicesTotal() -> Double {
@@ -64,3 +67,10 @@ extension QuoteEntity {
 //        return formatter.string(from: NSNumber(value: self)) ?? "€0.00"
 //    }
 //}
+func formattedCurrency(_ value: Double) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .currency
+    formatter.currencyCode = "EUR"
+    formatter.maximumFractionDigits = 2
+    return formatter.string(from: NSNumber(value: value)) ?? "\(value) €"
+}

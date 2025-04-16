@@ -43,8 +43,12 @@ extension Invoice {
         }
     }
     var invoiceTypeEnum: InvoiceType {
-        get { InvoiceType(rawValue: invoiceType ?? "") ?? .finale } // finale par défaut si nil
-        set { invoiceType = newValue.rawValue }
+        get {
+            InvoiceType(rawValue: self.invoiceType ?? "") ?? .finale
+        }
+        set {
+            self.invoiceType = newValue.rawValue
+        }
     }
 
     var isFinalInvoice: Bool {

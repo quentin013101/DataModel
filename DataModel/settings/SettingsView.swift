@@ -3,6 +3,7 @@ import SwiftUI
 struct ParametresView: View {
     // MARK: - Environnement et États
     //@Environment(\.dismiss) private var dismiss
+    @Binding var isPresented: Bool
 
     @State private var selectedImage: NSImage?
     @State private var selectedSignature: NSImage?
@@ -36,7 +37,9 @@ struct ParametresView: View {
     private let labelWidth: CGFloat = 150
 
     // MARK: - Initialisation
-    init() {
+    init(isPresented: Binding<Bool>) {
+        _isPresented = isPresented // ← important : préfixe `_` pour le `@Binding`
+
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
         savePath = appSupport.appendingPathComponent("MonApp/\(logoFilename)")
         signaturePath = appSupport.appendingPathComponent("MonApp/\(signatureFilename)")
@@ -134,13 +137,14 @@ struct ParametresView: View {
                 // Boutons d'action centrés
                 HStack {
                     
-                    Button("Fermer") { NSApp.keyWindow?.close() }
-                        .padding()
-                        .background(Color.gray.opacity(0.2))
-                        .foregroundColor(.white)
-                        .buttonStyle(.borderless)
-                        .cornerRadius(8)
-                    
+                    Button("Fermer") {
+                        isPresented = false
+                    }
+                    .padding()
+                    .background(Color.gray.opacity(0.2))
+                    .foregroundColor(.white)
+                    .buttonStyle(.borderless)
+                    .cornerRadius(8)
                     Spacer()
                     
                     Button(action : { saveSettings() })
@@ -270,7 +274,7 @@ struct ParametresView: View {
         
         // Les modifications sont enregistrées dans UserDefaults
         print("✅ Paramètres sauvegardés")
-        NSApp.keyWindow?.close()
+        isPresented = false
     }
 
     /// Supprime le logo enregistré.
