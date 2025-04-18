@@ -53,7 +53,7 @@ struct EditArticleView: View {
                             TextField("", text: $costText)
                                 .textFieldStyle(RoundedBorderTextFieldStyle())
                                 .frame(width: 100)
-                                .onChange(of: costText) { _ in updatePriceFromMargin() }
+                                .onChange(of: costText) { _ in updateMarginFromPrice() }
                         }
 
                         HStack {
@@ -68,10 +68,9 @@ struct EditArticleView: View {
                         HStack {
                             Text("Marge (%)")
                                 .frame(width: 180, alignment: .leading)
-                            TextField("", text: $marginText)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
-                                .frame(width: 100)
-                                .onChange(of: marginText) { _ in updatePriceFromMargin() }
+                            Text(marginText + " %")
+                                .frame(width: 100, alignment: .leading)
+                                .foregroundColor(.gray)
                         }
                     }
                 }
@@ -95,13 +94,26 @@ struct EditArticleView: View {
         .padding()
     }
 
+    private func updateMarginFromPrice() {
+        guard let price = Double(priceText),
+              let cost = Double(costText),
+              cost > 0 else {
+            marginText = "0.00"
+            return
+        }
+
+        let margin = ((price / cost) - 1) * 100
+        marginText = String(format: "%.2f", margin)
+    }
+
     private func saveChanges() {
         guard let cost = Double(costText),
-              let price = Double(priceText),
-              let margin = Double(marginText) else {
+              let price = Double(priceText) else {
             print("❌ Erreur de conversion des champs numériques")
             return
         }
+
+        let margin = ((price / cost) - 1) * 100
 
         article.name = name
         article.type = type
@@ -116,20 +128,5 @@ struct EditArticleView: View {
         } catch {
             print("❌ Erreur lors de l'enregistrement : \(error)")
         }
-    }
-
-    private func updatePriceFromMargin() {
-        guard let cost = Double(costText),
-              let margin = Double(marginText) else { return }
-        let price = cost * (1 + margin / 100)
-        priceText = String(format: "%.2f", price)
-    }
-
-    private func updateMarginFromPrice() {
-        guard let cost = Double(costText),
-              let price = Double(priceText),
-              cost > 0 else { return }
-        let margin = ((price / cost) - 1) * 100
-        marginText = String(format: "%.2f", margin)
     }
 }

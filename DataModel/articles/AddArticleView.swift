@@ -10,7 +10,7 @@ struct AddArticleView: View {
 
     @State private var costText = ""
     @State private var priceText = ""
-    @State private var marginText = ""
+    @State private var marginText = "0.00"
 
     private let types = ["Matériaux", "Main d'œuvre", "Ouvrage"]
     private let units = ["hr", "u", "m", "m²", "m3", "ml", "l", "kg", "Forfait"]
@@ -42,7 +42,7 @@ struct AddArticleView: View {
                             TextField("", text: $costText)
                                 .textFieldStyle(RoundedBorderTextFieldStyle())
                                 .frame(width: 100)
-                                .onChange(of: costText) { _ in updatePriceFromMargin() }
+                                .onChange(of: costText) { _ in updateMarginFromPrice() }
                         }
 
                         HStack {
@@ -57,36 +57,56 @@ struct AddArticleView: View {
                         HStack {
                             Text("Marge (%)")
                                 .frame(width: 180, alignment: .leading)
-                            TextField("", text: $marginText)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
-                                .frame(width: 100)
-                                .onChange(of: marginText) { _ in updatePriceFromMargin() }
+                            Text(marginText + " %")
+                                .frame(width: 100, alignment: .leading)
+                                .foregroundColor(.gray)
                         }
                     }
                 }
             }
 
             HStack {
-                Button("Annuler") { presentationMode.wrappedValue.dismiss() }
-                    .foregroundColor(.blue)
+                Button("Annuler") {
+                    presentationMode.wrappedValue.dismiss()
+                }
+                .foregroundColor(.blue)
 
                 Spacer()
 
-                Button("Enregistrer") { saveArticle() }
-                    .foregroundColor(.green)
+                Button("Enregistrer") {
+                    saveArticle()
+                }
+                .foregroundColor(.green)
             }
             .padding()
         }
         .padding()
     }
 
+    private func updateMarginFromPrice() {
+        guard let price = Double(priceText),
+              let cost = Double(costText), cost > 0 else {
+            marginText = "0.00"
+            return
+        }
+
+        let margin = ((price / cost) - 1) * 100
+        marginText = String(format: "%.2f", margin)
+    }
+
     private func saveArticle() {
+        // Si cost est vide, on le remplit avec price
+        if costText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            costText = priceText
+        }
+
         guard let cost = Double(costText),
-              let price = Double(priceText),
-              let margin = Double(marginText) else {
+              let price = Double(priceText) else {
             print("❌ Erreur de conversion des champs numériques")
             return
         }
+
+        let margin = ((price / cost) - 1) * 100
 
         let newArticle = Article(context: viewContext)
         newArticle.name = name
@@ -102,20 +122,5 @@ struct AddArticleView: View {
         } catch {
             print("Erreur lors de l'enregistrement : \(error)")
         }
-    }
-
-    private func updatePriceFromMargin() {
-        guard let cost = Double(costText),
-              let margin = Double(marginText) else { return }
-        let price = cost * (1 + margin / 100)
-        priceText = String(format: "%.2f", price)
-    }
-
-    private func updateMarginFromPrice() {
-        guard let cost = Double(costText),
-              let price = Double(priceText),
-              cost > 0 else { return }
-        let margin = ((price / cost) - 1) * 100
-        marginText = String(format: "%.2f", margin)
     }
 }
