@@ -186,18 +186,10 @@ struct A4SheetView: View {
             }
             
         }
-        .onChange(of: acompteLabel) { _ in
-            acompteText = "\(acompteLabel) \(Int(acomptePercentage)) %, soit \(String(format: "%.2f", netAPayer * acomptePercentage / 100)) €"
-        }
-        .onChange(of: acomptePercentage) { _ in
-            acompteText = "\(acompteLabel) \(Int(acomptePercentage)) %, soit \(String(format: "%.2f", netAPayer * acomptePercentage / 100)) €"
-        }
-        .onChange(of: soldeLabel) { _ in
-            soldeText = "\(soldeLabel) \(Int(soldePercentage)) %, soit \(String(format: "%.2f", netAPayer * soldePercentage / 100)) €"
-        }
-        .onChange(of: soldePercentage) { _ in
-            soldeText = "\(soldeLabel) \(Int(soldePercentage)) %, soit \(String(format: "%.2f", netAPayer * soldePercentage / 100)) €"
-        }
+        .onChange(of: acompteLabel) { _ in updateAcompteText() }
+        .onChange(of: acomptePercentage) { _ in updateAcompteText() }
+        .onChange(of: soldeLabel) { _ in updateSoldeText() }
+        .onChange(of: soldePercentage) { _ in updateSoldeText() }
         .onAppear {
             print("✅ A4SheetView loaded with isInvoice = \(isInvoice), isFinalInvoice = \(isFinalInvoice)")
             print("📦 sourceQuote is nil? \(sourceQuote == nil)")
@@ -230,8 +222,23 @@ struct A4SheetView: View {
             print("📦 invoice = \(String(describing: invoice))")
         }
     }
-    
-    // MARK: - 1) Header
+    private func updateAcompteText() {
+        if acompteText.isEmpty {
+            acompteText = acompteLabel
+        }
+
+        let montant = netAPayer * acomptePercentage / 100
+        acompteText = "\(acompteLabel) \(Int(acomptePercentage)) %, soit \(String(format: "%.2f", montant)) €"
+    }
+
+    private func updateSoldeText() {
+        if soldeText.isEmpty {
+            soldeText = soldeLabel
+        }
+
+        let montant = netAPayer * soldePercentage / 100
+        soldeText = "\(soldeLabel) \(Int(soldePercentage)) %, soit \(String(format: "%.2f", montant)) €"
+    }    // MARK: - 1) Header
     
     private var headerSection: some View {
         HStack(alignment: .top, spacing: 0) {
@@ -463,16 +470,8 @@ struct A4SheetView: View {
 
                 if !quoteArticles.isEmpty {
                     ForEach(quoteArticles.indices, id: \.self) { i in
-                        let binding = Binding<QuoteArticle>(
-                            get: { quoteArticles[i] },
-                            set: {
-                                quoteArticles[i] = $0
-                                print("✅ Modif appliquée à quoteArticles[\(i)] — \($0.designation)")
-                            }
-                        )
-
                         DevisLineRowHoverArrows(
-                            quoteArticle: binding, // 👈 ça c’est la clé !
+                            quoteArticle: quoteArticles[i], // 👈 on passe directement l'objet ObservableObject
                             index: i,
                             computeLineNumber: lineNumber,
                             isHovering: arrowIndex == i,
@@ -491,6 +490,7 @@ struct A4SheetView: View {
                             computeCategoryTotal: { _ in computeCategoryTotal(startIndex: i) }
                         )
                     }
+
                     PDFBoxView(backgroundColor: NSColor.gray.withAlphaComponent(0.2))
                         .frame(height: 1)
                 }
@@ -1041,20 +1041,20 @@ struct A4SheetView: View {
 
         return sousTotal - remiseAmount - totalFacturesDeduites
     }
-    func updateAcompteText() {
-        let amount = netAPayer * acomptePercentage / 100
-        if acompteText.isEmpty {
-            acompteText = "Acompte à la signature de"
-        }
-        // Le texte reste intact, seul le montant change (affiché séparément)
-    }
-
-    func updateSoldeText() {
-        let amount = netAPayer * soldePercentage / 100
-        if soldeText.isEmpty {
-            soldeText = "Solde à la réception du chantier de"
-        }
-    }
+//    func updateAcompteText() {
+//        let amount = netAPayer * acomptePercentage / 100
+//        if acompteText.isEmpty {
+//            acompteText = "Acompte à la signature de"
+//        }
+//        // Le texte reste intact, seul le montant change (affiché séparément)
+//    }
+//
+//    func updateSoldeText() {
+//        let amount = netAPayer * soldePercentage / 100
+//        if soldeText.isEmpty {
+//            soldeText = "Solde à la réception du chantier de"
+//        }
+//    }
 
     // MARK: - Logique articles
     
@@ -1231,8 +1231,14 @@ struct A4SheetView: View {
     
     fileprivate struct DevisLineRowHoverArrows: View {
         @Environment(\.isPrinting) private var isPrinting
-        @Binding var quoteArticle: QuoteArticle
+        @ObservedObject var quoteArticle: QuoteArticle
+        @State private var designationHeight: CGFloat = 22
 
+        
+        private var currentHeight: CGFloat {
+            isPrinting ? quoteArticle.cachedHeight : designationHeight
+        }
+        
         let index: Int
         let computeLineNumber: (Int) -> String
         private let allUnits = ["hr", "u", "m", "m²", "m3", "ml", "l", "kg", "forfait"]
@@ -1385,42 +1391,50 @@ struct A4SheetView: View {
                 }
             }
         }
-        
+        private let noGroupingFormatter: NumberFormatter = {
+            let formatter = NumberFormatter()
+            formatter.numberStyle = .decimal
+            formatter.maximumFractionDigits = 2
+            formatter.usesGroupingSeparator = false // 👈 empêche les points ou espaces pour les milliers
+            return formatter
+        }()
         private var articleRow: some View {
             let tvaRate = isAutoEntrepreneur ? 0.0 : 0.20
-            let total = Double(quoteArticle.quantity) * quoteArticle.unitPrice * (1 + tvaRate)
+            let total = Double(quoteArticle.quantity) * (quoteArticle.unitPrice ?? 0.0) * (1 + tvaRate)
 
             return ZStack {
-                Color.clear.frame(height: 22)
+                Color.clear.frame(height: currentHeight)
 
                 HStack(spacing: 0) {
                     PDFBoxView(backgroundColor: NSColor.gray.withAlphaComponent(0.2))
-                        .frame(width: 1, height: 22)
+                        .frame(width: 1, height: currentHeight)
 
                     Text(computeLineNumber(index))
                         .frame(width: 37, alignment: .center)
 
                     PDFBoxView(backgroundColor: NSColor.gray.withAlphaComponent(0.2))
-                        .frame(width: 1, height: 22)
+                        .frame(width: 1, height: currentHeight)
 
-                    // ✅ Désignation modifiable
-                    TextField("Désignation", text: $quoteArticle.designation)
-                        .textFieldStyle(.plain)
-                        .frame(width: 270, alignment: .leading)
-                        .padding(.leading, 2)
-                        .onChange(of: quoteArticle.designation) { new in
-                            print("✏️ Nouvelle désignation : \(new)")
-                        }
+                    if isPrinting {
+                        Text(quoteArticle.designation)
+                            .font(.system(size: 9))
+                            .frame(width: 270, alignment: .leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } else {
+                        DynamicTextEditor(
+                            text: $quoteArticle.designation,
+                            minHeight: 22,
+                            width: 270,
+                            height: $designationHeight
+                        )
+                        .frame(width: 270)
+                    }
 
                     PDFBoxView(backgroundColor: NSColor.gray.withAlphaComponent(0.2))
-                        .frame(width: 1, height: 22)
+                        .frame(width: 1, height: currentHeight)
 
-                    // ✅ Quantité
                     HStack(spacing: 0) {
-                        TextField("", text: Binding(
-                            get: { String(quoteArticle.quantity) },
-                            set: { quoteArticle.quantity = Int($0) ?? 0 }
-                        ))
+                        TextField("", value: $quoteArticle.quantity, formatter: NumberFormatter())
                         .textFieldStyle(.plain)
                         .multilineTextAlignment(.center)
 
@@ -1432,18 +1446,10 @@ struct A4SheetView: View {
                     .frame(width: 50, alignment: .trailing)
 
                     PDFBoxView(backgroundColor: NSColor.gray.withAlphaComponent(0.2))
-                        .frame(width: 1, height: 22)
+                        .frame(width: 1, height: currentHeight)
 
-                    // ✅ Prix unitaire
                     HStack(spacing: 0) {
-                        TextField("", text: Binding(
-                            get: { String(format: "%.2f", quoteArticle.unitPrice) },
-                            set: {
-                                // Remplacement virgule → point pour compatibilité FR
-                                let cleaned = $0.replacingOccurrences(of: ",", with: ".")
-                                quoteArticle.unitPrice = Double(cleaned) ?? 0.0
-                            }
-                        ))
+                        TextField("", value: $quoteArticle.unitPrice, formatter: noGroupingFormatter)
                         .textFieldStyle(.plain)
                         .multilineTextAlignment(.trailing)
 
@@ -1453,24 +1459,24 @@ struct A4SheetView: View {
                     .frame(width: 70, alignment: .trailing)
 
                     PDFBoxView(backgroundColor: NSColor.gray.withAlphaComponent(0.2))
-                        .frame(width: 1, height: 22)
+                        .frame(width: 1, height: currentHeight)
 
                     Text(String(format: "%.0f%%", tvaRate * 100))
                         .frame(width: 50, alignment: .trailing)
 
                     PDFBoxView(backgroundColor: NSColor.gray.withAlphaComponent(0.2))
-                        .frame(width: 1, height: 22)
+                        .frame(width: 1, height: currentHeight)
 
                     Text(String(format: "%.2f €", total))
                         .frame(width: 77, alignment: .trailing)
 
                     PDFBoxView(backgroundColor: NSColor.gray.withAlphaComponent(0.2))
-                        .frame(width: 1, height: 22)
+                        .frame(width: 1, height: currentHeight)
                 }
                 .font(.system(size: 9))
                 .foregroundColor(.black)
             }
-            .frame(width: 560, height: 22)
+            .frame(width: 560, height: currentHeight)
         }
     }
     

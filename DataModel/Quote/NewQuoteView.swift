@@ -340,11 +340,24 @@ struct NewQuoteView: View {
             clientProjectAddress = "\(clientStreet)\n\(clientPostalCode) \(clientCity)"
         }
         .popover(isPresented: $showingClientSelection) {
-            ClientSelectionWrapper(
-                selectedClient: $selectedClient,
-                clientProjectAddress: $clientProjectAddress,
-                showingClientSelection: $showingClientSelection
-            )
+            NavigationView {
+                ClientSelectionView(
+                    onClientSelected: {
+                        showingClientSelection = false
+                    },
+                    selectedClient: $selectedClient,
+                    clientProjectAddress: $clientProjectAddress
+                )
+                .environment(\.managedObjectContext, viewContext)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Fermer") {
+                            showingClientSelection = false
+                        }
+                    }
+                }
+            }
+            .frame(width: 400, height: 600)
         }
         .popover(isPresented: $showingArticleSelection) {
             NavigationView {
@@ -452,6 +465,29 @@ struct NewQuoteView: View {
         }
     }
     func exportPDF() {
+        // 💾 Sauvegarde automatique avant export
+        if clientProjectAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            clientProjectAddress = "\(clientStreet)\n\(clientPostalCode) \(clientCity)"
+        }
+
+        saveQuoteToCoreData(
+            context: context,
+            quoteArticles: quoteArticles,
+            clientCivility: selectedClient?.civility ?? "",
+            clientProjectAddress: clientProjectAddress,
+            clientFirstName: selectedClient?.firstName ?? "",
+            clientLastName: selectedClient?.lastName ?? "",
+            projectName: projectName,
+            sousTotal: sousTotal,
+            remiseAmount: remiseAmount,
+            remiseIsPercentage: remiseIsPercentage,
+            remiseValue: remiseValue,
+            devisNumber: devisNumber,
+            clientStreet: clientStreet,
+            clientPostalCode: clientPostalCode,
+            clientCity: clientCity,
+            quoteDate: quoteDate
+        )
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.pdf]
 
@@ -547,7 +583,7 @@ struct NewQuoteView: View {
         let showSolde = !soldeText.isEmpty
 
         ensureSignatureBlockFits()
-
+        preparePDFHeights()
         // 1. Découper par .pageBreak
         var pages: [[QuoteArticle]] = []
         var currentPage: [QuoteArticle] = []
@@ -766,7 +802,27 @@ struct NewQuoteView: View {
         selectedClient = temporaryClient
         clientProjectAddress = "\(clientStreet)\n\(clientPostalCode) \(clientCity)"        // Pas besoin de mettre à jour l'adresse ici à nouveau, c'est déjà fait ci-dessus
     }
-
+    func preparePDFHeights() {
+        for index in quoteArticles.indices {
+            let designation = quoteArticles[index].designation
+            let height = calculateTextHeight(
+                text: designation,
+                font: NSFont.systemFont(ofSize: 9),
+                width: 270
+            )
+            quoteArticles[index].cachedHeight = max(22, height + 8)
+        }
+    }
+    func calculateTextHeight(text: String, font: NSFont, width: CGFloat) -> CGFloat {
+        let nsString = NSString(string: text)
+        let attributes: [NSAttributedString.Key: Any] = [.font: font]
+        let boundingRect = nsString.boundingRect(
+            with: CGSize(width: width - 4, height: .greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin],
+            attributes: attributes
+        )
+        return ceil(boundingRect.height)
+    }
 }
 struct ClientSelectionWrapper: View {
     @Binding var selectedClient: Contact?
@@ -775,24 +831,22 @@ struct ClientSelectionWrapper: View {
     @Environment(\.managedObjectContext) private var viewContext
 
     var body: some View {
-        NavigationView {
-            ClientSelectionView(
-                onClientSelected: {
-                    showingClientSelection = false // ✅ ferme la popover dès sélection
-                },
-                selectedClient: $selectedClient,
-                clientProjectAddress: $clientProjectAddress
-            )
-            .environment(\.managedObjectContext, viewContext)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Fermer") {
-                        showingClientSelection = false
-                    }
+        ClientSelectionView(
+            onClientSelected: {
+                showingClientSelection = false
+            },
+            selectedClient: $selectedClient,
+            clientProjectAddress: $clientProjectAddress
+        )
+        .environment(\.managedObjectContext, viewContext)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Fermer") {
+                    showingClientSelection = false
                 }
             }
         }
-        .frame(width: 400, height: 500)
+        .frame(width: 400, height: 500) // ✨ même taille que ArticleSelection
     }
 }
 extension Notification.Name {
@@ -815,3 +869,4 @@ func generateNewQuoteNumber() -> String {
     let randomPart = Int.random(in: 100...999)
     return "DV-\(datePart)-\(randomPart)"
 }
+

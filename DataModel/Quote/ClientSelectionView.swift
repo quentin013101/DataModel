@@ -38,33 +38,32 @@ struct ClientSelectionView: View {
                         let streetLine = client.street ?? ""
                         let postalCityLine = "\(client.postalCode ?? "") \(client.city ?? "")"
                         clientProjectAddress = streetLine + "\n" + postalCityLine
-
                         onClientSelected?()
                     }) {
-                        VStack(alignment: .leading) {
-                            Text("\(client.firstName ?? "") \(client.lastName ?? "")")
-                                .font(.headline)
-                            Text("\(client.street ?? ""), \(client.postalCode ?? "") \(client.city ?? "")")
-                                .font(.subheadline)
-                                .foregroundColor(.gray)
+                        HStack {
+                            Text("\(client.firstName ?? "") \(client.lastName ?? "") — \(client.street ?? ""), \(client.postalCode ?? "") \(client.city ?? "")")
+                                .font(.system(size: 12))
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                            Spacer()
                         }
-                        .padding()
+                        .padding(.vertical, 4)
                     }
                 }
+                .frame(maxHeight: 300) // ✅ Pour éviter qu'elle dépasse dans la popover
             }
+
+            Divider()
 
             Button("Ajouter un nouveau client") {
                 showingAddClient = true
             }
-            .foregroundColor(.blue)
             .padding()
+
         }
-        .frame(minWidth: 400, minHeight: 500)
+        .frame(width: 400, height: 500)
         .sheet(isPresented: $showingAddClient) {
             AddContactView().environment(\.managedObjectContext, viewContext)
-        }
-        .onTapGesture {
-            onClientSelected?()
         }
     }
 

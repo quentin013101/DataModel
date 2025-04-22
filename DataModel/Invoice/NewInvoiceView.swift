@@ -491,6 +491,7 @@ struct NewInvoiceView: View {
         let pageHeight: CGFloat = 842
         ensureSignatureBlockFits()
 
+        preparePDFHeights()
         // 1. Découper les articles par .pageBreak
         var pages: [[QuoteArticle]] = []
         var currentPage: [QuoteArticle] = []
@@ -588,6 +589,27 @@ struct NewInvoiceView: View {
 
         finalDocument.write(to: saveURL)
         print("✅ PDF de la facture exporté à : \(saveURL.path)")
+    }
+    func preparePDFHeights() {
+        for index in quoteArticles.indices {
+            let designation = quoteArticles[index].designation
+            let height = calculateTextHeight(
+                text: designation,
+                font: NSFont.systemFont(ofSize: 9),
+                width: 270
+            )
+            quoteArticles[index].cachedHeight = max(22, height + 8)
+        }
+    }
+    func calculateTextHeight(text: String, font: NSFont, width: CGFloat) -> CGFloat {
+        let nsString = NSString(string: text)
+        let attributes: [NSAttributedString.Key: Any] = [.font: font]
+        let boundingRect = nsString.boundingRect(
+            with: CGSize(width: width - 4, height: .greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin],
+            attributes: attributes
+        )
+        return ceil(boundingRect.height)
     }
 }
 //extension QuoteArticle {
